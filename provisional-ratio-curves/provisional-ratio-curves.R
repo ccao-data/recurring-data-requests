@@ -1,5 +1,3 @@
-# See https://github.com/ccao-data/enterprise-intelligence/issues/254
-
 # Setup ----
 
 library(arrow)
@@ -130,7 +128,6 @@ walk(unique(all_ratios$township_name), \(x) {
   # Graph ----
 
   # Create ratio curves for both stages
-  # Compute dynamic y-axis range
   y_min <- min(decile_ratios$`Sale Ratio`, 0.7, na.rm = TRUE)
   y_max <- max(decile_ratios$`Sale Ratio`, 1.3, na.rm = TRUE)
 
