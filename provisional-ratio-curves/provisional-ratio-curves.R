@@ -28,8 +28,8 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
 data_path <- "O:/CCAODATA/recurring_data_requests/provisional_ratio_curves"
-input_path <- file.path("input_data")
-output_path <- file.path("output_data")
+input_path <- file.path(data_path, "input_data")
+output_path <- file.path(data_path, "output_data")
 files_in <- list.files(input_path, full.names = TRUE)
 
 # Flatfile ----
