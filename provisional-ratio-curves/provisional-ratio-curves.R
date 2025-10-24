@@ -3,6 +3,7 @@
 # Setup ----
 
 library(arrow)
+library(assessr)
 library(ccao)
 library(colorspace)
 library(DBI)
