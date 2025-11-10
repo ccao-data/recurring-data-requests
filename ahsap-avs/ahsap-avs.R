@@ -17,9 +17,7 @@ mail_year <- 2025
 # placed in the output folder. The script only assumes there will be an input
 # column named "Permanent Index Number".
 
-path <- "O:/CCAODATA/recurring-data-requests/ahsap-avs"
-input <- file.path(path, "input")
-output <- file.path(path, "output")
+input <- "O:/CCAODATA/recurring-data-requests/ahsap-avs/input"
 
 # Loop through all input files provided by valuations
 map(list.files(input, full.names = TRUE), \(x) {
@@ -56,5 +54,5 @@ map(list.files(input, full.names = TRUE), \(x) {
   left_join(ahsap_parcels, changes, by = "pin") %>%
     select(-pin) %>%
     rename_with(~ gsub("\\.", " ", .x), .cols = everything()) %>%
-    write.xlsx((file.path("output", x)))
+    write.xlsx(gsub("input", "output", x))
 })
