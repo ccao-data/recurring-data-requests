@@ -10,7 +10,7 @@ collected data per PIN (PIN, including address, unit chars, etc.), which lives
 in `ccao.pin_condo_char`.
 
 We append the following "flag" columns of data points that might be good proxies
-for needing a characteristics update.
+for needing a characteristics update:
 
 - QC flag for possible issues as identified by our intern's work
 - permit data
@@ -29,3 +29,6 @@ columns for Field to note changes.
 - `tri`  - Set the triad for which you'd like to export condos.
 
 - `min_year` - Oldest year for which to include sales and permits.
+
+---
+Example output here: `O:\CCAODATA\recurring-data-requests\condo-chars-prep\output\south_condo_review_2025.xlsx`
