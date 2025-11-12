@@ -22,7 +22,7 @@ noctua_options(unload = TRUE)
 
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
-# These files live on the O drive in 
+# These files live on the O drive in
 # O:/CCAODATA/recurring-data-requests/provisional-ratio-curves/. Since
 # that isn't accessible from the server they need to be copied locally or run
 # from a local machine. They MUST be named according to the current naming
