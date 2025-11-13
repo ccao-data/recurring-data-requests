@@ -16,7 +16,8 @@ path <- "O:/CCAODATA/recurring-data-requests/condo-chars-prep"
 
 # Connect to Athena
 noctua_options(unload = TRUE)
-AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
+AWS_ATHENA_CONN_NOCTUA <- dbConnect(
+        noctua::athena(), rstudio_conn_tab = FALSE)
 
 # Triad we want to deliver condos for
 tri <- "South"
