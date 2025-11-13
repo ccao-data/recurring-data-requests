@@ -27,7 +27,10 @@ min_year <- "2022"
 # DATA ----
 
 # Gather previously identified problematic unit-level flags
-condo_qc <- read.xlsx(file.path(path, "input/Flagged_Condos.xlsx"), sheet = 1) %>%
+condo_qc <- read.xlsx(
+  file.path(path, "input/Flagged_Condos.xlsx"),
+  sheet = 1
+) %>%
   mutate(pin = gsub("-", "", `14-Digit.PIN`)) %>%
   select(c("PIN" = "pin", "QC Flag" = "Flag.Comments"))
 
@@ -151,6 +154,8 @@ walk(wb$sheet_names, function(x) {
 # Export
 saveWorkbook(
   wb,
-  glue(file.path(path, "output/{str_to_lower(tri)}_condo_review_{year(Sys.Date())}.xlsx")),
+  glue(file.path(
+    path, "output/{str_to_lower(tri)}_condo_review_{year(Sys.Date())}.xlsx"
+  )),
   overwrite = TRUE
 )
