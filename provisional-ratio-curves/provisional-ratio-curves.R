@@ -141,8 +141,12 @@ walk(unique(all_ratios$township_name), \(x) {
   )) +
     # IAAO dotted range
     geom_hline(yintercept = 1, color = "darkgreen", linewidth = 1) +
-    geom_hline(yintercept = 0.9, linetype = "dotted", color = "black", linewidth = 0.8) +
-    geom_hline(yintercept = 1.1, linetype = "dotted", color = "black", linewidth = 0.8) +
+    geom_hline(
+      yintercept = 0.9, linetype = "dotted", color = "black", linewidth = 0.8
+    ) +
+    geom_hline(
+      yintercept = 1.1, linetype = "dotted", color = "black", linewidth = 0.8
+    ) +
     annotate(
       "text",
       x = 1, y = 1.11,
@@ -155,7 +159,12 @@ walk(unique(all_ratios$township_name), \(x) {
     geom_label(show.legend = FALSE) +
     theme_minimal() +
     coord_cartesian(ylim = c(y_min, y_max)) +
-    scale_y_continuous(breaks = seq(floor(y_min * 10) / 10, ceiling(y_max * 10) / 10, by = 0.1)) +
+    scale_y_continuous(
+      breaks = seq(floor(y_min * 10) / 10,
+        ceiling(y_max * 10) / 10,
+        by = 0.1
+      )
+    ) +
     scale_x_continuous(breaks = seq(1, 10, by = 1)) +
     ggtitle(
       label = paste0("Sale Ratios for ", x, " Township"),

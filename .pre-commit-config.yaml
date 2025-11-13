@@ -1,12 +1,12 @@
 # All available hooks: https://pre-commit.com/hooks.html
 repos:
   - repo: https://github.com/sqlfluff/sqlfluff
-    rev: 3.4.2
+    rev: 4.0.0a2
     hooks:
       - id: sqlfluff-lint
       - id: sqlfluff-fix
   - repo: https://github.com/lorenzwalthert/precommit
-    rev: v0.4.3.9014
+    rev: v0.4.3.9017
     hooks:
       - id: style-files
         args: [--style_pkg=styler, --style_fun=tidyverse_style]
