@@ -12,7 +12,7 @@ SELECT
         vpa.prop_address_city_name || ', IL',
         vpa.prop_address_zipcode_1
     ) AS address,
-          vpa.prop_address_unit_number AS unit,
+vpa.prop_address_unit_number AS unit,
     COUNT(*)
         OVER (PARTITION BY vpu.pin10)
         AS total_number_of_units_in_building,
