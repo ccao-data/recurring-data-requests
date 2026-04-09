@@ -8,7 +8,7 @@ WITH final_models AS (
         UNNEST(final_model.township_code_coverage) AS towns (township_code)
     -- Year will need to be adjusted so that desk review to model values join in
     -- R script is 1 to 1.
-    WHERE final_model.year = '2025' AND final_model.type = 'res'
+    WHERE final_model.year = '2026' AND final_model.type = 'res'
 ),
 
 -- Use final model run IDs to grab the model values we need to compare Res Val's
@@ -26,7 +26,7 @@ model_vals AS (
         AND assessment_pin.township_code = final_models.township_code
 ),
 
--- Res Val provides PINs that sometimes only appear in 2024 or 2025 in
+-- Res Val provides PINs that sometimes only appear in 2025 or 2026 in
 -- default.vw_pin_universe. Make sure we grab one and only one row for every PIN
 -- that appears in either year, regardless of whether they have a model value.
 most_recent_pin AS (
@@ -40,7 +40,7 @@ most_recent_pin AS (
             ORDER BY uni.year DESC
         ) AS rank
     FROM default.vw_pin_universe AS uni
-    WHERE uni.year IN ('2024', '2025')
+    WHERE uni.year IN ('2025', '2026')
 )
 
 SELECT
