@@ -126,6 +126,23 @@ walk(unique(all_ratios$township_name), \(x) {
       values_to = "Sale Ratio"
     )
 
+  # Build x-axis labels with abbreviated price ranges per decile
+  axis_labels <- output$`All Parcels` %>%
+    filter(!is.na(`Sale Price`)) %>%
+    summarize(
+      min_price = min(`Sale Price`),
+      max_price = max(`Sale Price`),
+      .by = `Price Decile`
+    ) %>%
+    arrange(`Price Decile`) %>%
+    mutate(label = paste0(
+      `Price Decile`, "\n",
+      scales::dollar(min_price, scale_cut = scales::cut_short_scale()),
+      "\u2013",
+      scales::dollar(max_price, scale_cut = scales::cut_short_scale())
+    )) %>%
+    { setNames(.$label, .$`Price Decile`) }
+
   # Graph ----
 
   # Create ratio curves for both stages
@@ -165,7 +182,7 @@ walk(unique(all_ratios$township_name), \(x) {
         by = 0.1
       )
     ) +
-    scale_x_continuous(breaks = seq(1, 10, by = 1)) +
+    scale_x_continuous(breaks = seq(1, 10, by = 1), labels = axis_labels) +
     ggtitle(
       label = paste0("Sale Ratios for ", x, " Township"),
       subtitle = "Model and Desk Review Values"
