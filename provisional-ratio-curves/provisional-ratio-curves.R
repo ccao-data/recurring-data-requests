@@ -141,7 +141,9 @@ walk(unique(all_ratios$township_name), \(x) {
       "\u2013",
       scales::dollar(max_price, scale_cut = scales::cut_short_scale())
     )) %>%
-    { setNames(.$label, .$`Price Decile`) }
+    {
+      setNames(.$label, .$`Price Decile`)
+    }
 
   # Graph ----
 
