@@ -195,14 +195,14 @@
     },
     "ccao": {
       "Package": "ccao",
-      "Version": "1.3.0",
+      "Version": "1.3.1",
       "Source": "GitHub",
       "RemoteType": "github",
-      "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
-      "RemoteSha": "c74f627d6431203bcf0cc9efa571396e6348eaec",
+      "RemoteSha": "18e12ca5115741924a58b0be6b4055f480f22a2d",
+      "RemoteHost": "api.github.com",
       "Requirements": [
         "R",
         "assessr",
@@ -211,7 +211,7 @@
         "rlang",
         "tidyr"
       ],
-      "Hash": "55e8da9bb17dbb2138d7b691e51cba6d"
+      "Hash": "c4c334d304550bbf4736eee6a4f15592"
     },
     "class": {
       "Package": "class",
