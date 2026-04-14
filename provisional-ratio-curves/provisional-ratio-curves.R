@@ -27,9 +27,10 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 # that isn't accessible from the server they need to be copied locally or run
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
-data_path <- "/home/miwagne/repos/recurring-data-requests/provisional-ratio-curves/"
+data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves/"
+input_path <- file.path(data_path, "input")
 output_path <- file.path(data_path, "output")
-files_in <- file.path(data_path, "33-river_forest.xlsx")
+files_in <- list.files(input_path, full.names = TRUE)
 
 # Flatfile ----
 
