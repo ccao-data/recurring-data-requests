@@ -27,10 +27,9 @@ AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 # that isn't accessible from the server they need to be copied locally or run
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
-data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves/"
-input_path <- file.path(data_path, "input")
+data_path <- "/home/miwagne/repos/recurring-data-requests/provisional-ratio-curves/"
 output_path <- file.path(data_path, "output")
-files_in <- list.files(input_path, full.names = TRUE)
+files_in <- file.path(data_path, "33-river_forest.xlsx")
 
 # Flatfile ----
 
@@ -138,7 +137,7 @@ walk(unique(all_ratios$township_name), \(x) {
     mutate(label = paste0(
       `Price Decile`, "\n",
       scales::dollar(min_price, scale_cut = scales::cut_short_scale()),
-      "\u2013",
+      "\u2013\n",
       scales::dollar(max_price, scale_cut = scales::cut_short_scale())
     )) %>%
     {
@@ -177,6 +176,7 @@ walk(unique(all_ratios$township_name), \(x) {
     geom_line(linewidth = 1) +
     geom_label(show.legend = FALSE) +
     theme_minimal() +
+    theme(axis.text.x = element_text(size = 8)) +
     coord_cartesian(ylim = c(y_min, y_max)) +
     scale_y_continuous(
       breaks = seq(floor(y_min * 10) / 10,
