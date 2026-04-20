@@ -22,14 +22,16 @@ noctua_options(unload = TRUE)
 
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
+year <- format(Sys.Date(), "%Y")
+
 # These files live on the O drive in
 # O:/CCAODATA/recurring-data-requests/provisional-ratio-curves/. Since
 # that isn't accessible from the server they need to be copied locally or run
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
 data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves/"
-input_path <- file.path(data_path, "input")
-output_path <- file.path(data_path, "output")
+input_path <- file.path(data_path, "input", year)
+output_path <- file.path(data_path, "output", year)
 files_in <- list.files(input_path, full.names = TRUE)
 
 # Flatfile ----
