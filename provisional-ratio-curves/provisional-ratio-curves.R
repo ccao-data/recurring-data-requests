@@ -22,14 +22,16 @@ noctua_options(unload = TRUE)
 
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
+year <- format(Sys.Date(), "%Y")
+
 # These files live on the O drive in
 # O:/CCAODATA/recurring-data-requests/provisional-ratio-curves/. Since
 # that isn't accessible from the server they need to be copied locally or run
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
 data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves/"
-input_path <- file.path(data_path, "input")
-output_path <- file.path(data_path, "output")
+input_path <- file.path(data_path, "input", year)
+output_path <- file.path(data_path, "output", year)
 files_in <- list.files(input_path, full.names = TRUE)
 
 # Flatfile ----
@@ -126,6 +128,25 @@ walk(unique(all_ratios$township_name), \(x) {
       values_to = "Sale Ratio"
     )
 
+  # Build x-axis labels with abbreviated price ranges per decile
+  axis_labels <- output$`All Parcels` %>%
+    filter(!is.na(`Sale Price`)) %>%
+    summarize(
+      min_price = min(`Sale Price`),
+      max_price = max(`Sale Price`),
+      .by = `Price Decile`
+    ) %>%
+    arrange(`Price Decile`) %>%
+    mutate(label = paste0(
+      `Price Decile`, "\n",
+      scales::dollar(min_price, scale_cut = scales::cut_short_scale()),
+      "\u2013\n",
+      scales::dollar(max_price, scale_cut = scales::cut_short_scale())
+    )) %>%
+    {
+      setNames(.$label, .$`Price Decile`)
+    }
+
   # Graph ----
 
   # Create ratio curves for both stages
@@ -158,6 +179,7 @@ walk(unique(all_ratios$township_name), \(x) {
     geom_line(linewidth = 1) +
     geom_label(show.legend = FALSE) +
     theme_minimal() +
+    theme(axis.text.x = element_text(size = 8)) +
     coord_cartesian(ylim = c(y_min, y_max)) +
     scale_y_continuous(
       breaks = seq(floor(y_min * 10) / 10,
@@ -165,7 +187,7 @@ walk(unique(all_ratios$township_name), \(x) {
         by = 0.1
       )
     ) +
-    scale_x_continuous(breaks = seq(1, 10, by = 1)) +
+    scale_x_continuous(breaks = seq(1, 10, by = 1), labels = axis_labels) +
     ggtitle(
       label = paste0("Sale Ratios for ", x, " Township"),
       subtitle = "Model and Desk Review Values"
