@@ -58,12 +58,14 @@ all_ratios <- dr_vals %>%
   left_join(model_vals)
 
 walk(unique(all_ratios$township_name), \(x) {
+  # Process and export one workbook/plot/map set per township.
   # Construct list for outputting multisheet .xlsx
   output <- list()
   output$`All Parcels` <- all_ratios %>%
     filter(township_name == x) %>%
     select(-township_name) %>%
     mutate(
+      # Deciles are based on sale price and drive both tabular and plot outputs.
       price_decile = ntile(sale_price, 10),
       model_sale_ratio = model_value / sale_price,
       desk_review_sale_ratio = desk_review_value / sale_price
@@ -89,7 +91,7 @@ walk(unique(all_ratios$township_name), \(x) {
     mutate(across(model_ratio:desk_review_cod, ~ round(.x, digits = 6))) %>%
     rename_with(~ str_to_title(gsub("_", " ", .x)))
 
-  # Calculate vertical equity metrics for .xlsx output
+  # Calculate equity metrics for .xlsx output
   output$`Town-Level Stats` <- output$`All Parcels` %>%
     filter(!is.na(sale_price)) %>%
     summarize(
@@ -116,6 +118,7 @@ walk(unique(all_ratios$township_name), \(x) {
   output$`All Parcels` <- output$`All Parcels` %>%
     rename_with(~ str_to_title(gsub("_", " ", .x)))
 
+  # Write one workbook per township with parcel-level and summary tabs.
   output %>%
     write.xlsx(file.path(output_path, paste0(gsub(" ", "_", x), ".xlsx")))
 
@@ -144,12 +147,14 @@ walk(unique(all_ratios$township_name), \(x) {
       scales::dollar(max_price, scale_cut = scales::cut_short_scale())
     )) %>%
     {
+      # Named vector expected by scale_x_continuous(labels = ...).
       setNames(.$label, .$`Price Decile`)
     }
 
   # Graph ----
 
   # Create ratio curves for both stages
+  # Clamp y-limits so charts are comparable while still expanding for outliers.
   y_min <- min(decile_ratios$`Sale Ratio`, 0.7, na.rm = TRUE)
   y_max <- max(decile_ratios$`Sale Ratio`, 1.3, na.rm = TRUE)
 
@@ -205,6 +210,7 @@ walk(unique(all_ratios$township_name), \(x) {
     filter(township_name == x) %>%
     select(town_nbhd, geometry)
 
+  # Aggregate to neighborhood medians and reshape for faceted map panels.
   map_data <- output$`All Parcels` %>%
     select(
       `Neighborhood Number`,
@@ -223,6 +229,7 @@ walk(unique(all_ratios$township_name), \(x) {
     ) %>%
     mutate(
       Stage = factor(Stage, levels = c("Model", "Desk Review")),
+      # Align parcel neighborhood IDs to polygon IDs for joining.
       `Neighborhood Number` = gsub("-", "", `Neighborhood Number`)
     ) %>%
     left_join(neighborhoods, c("Neighborhood Number" = "town_nbhd")) %>%
