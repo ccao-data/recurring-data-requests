@@ -74,7 +74,7 @@ all_ratios <- dr_vals %>%
       select(pin)
   ) %>%
   full_join(model_vals, by = "pin") %>%
-  # Define an excluded a sale as one that has a sale price but no provided desk
+  # Define an excluded sale as one that has a sale price but no provided desk
   # review value.
   mutate(sale_excluded = is.na(desk_review_value) & !is.na(sale_price))
 
