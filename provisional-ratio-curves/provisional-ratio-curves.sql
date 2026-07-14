@@ -45,6 +45,13 @@ most_recent_pin AS (
             CAST(YEAR(CURRENT_DATE) - 1 AS VARCHAR),
             CAST(YEAR(CURRENT_DATE) AS VARCHAR)
         )
+        -- Make sure we only grab parcels valued by the res avm, for the towns
+        -- we're processing.
+        AND uni.class IN (
+            '202', '203', '204', '205', '206', '207', '208', '209',
+            '210', '211', '212', '218', '219', '234', '278', '295'
+        )
+        AND uni.township_code IN ({dr_towns*}) -- noqa
 )
 
 SELECT

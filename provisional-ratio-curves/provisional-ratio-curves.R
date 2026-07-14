@@ -8,6 +8,7 @@ library(DBI)
 library(dplyr)
 library(ggplot2)
 library(ggspatial)
+library(glue)
 library(noctua)
 library(openxlsx)
 library(prettymapr)
@@ -19,7 +20,6 @@ library(sf)
 library(tidyr)
 
 noctua_options(unload = TRUE)
-
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
 year <- format(Sys.Date(), "%Y")
@@ -29,10 +29,10 @@ year <- format(Sys.Date(), "%Y")
 # that isn't accessible from the server they need to be copied locally or run
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
-data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves/"
+data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves"
 input_path <- file.path(data_path, "input", year)
 output_path <- file.path(data_path, "output", year)
-files_in <- list.files(input_path, full.names = TRUE)
+files_in <- list.files(input_path, full.names = TRUE, pattern = "\\.xlsx$")
 
 # Flatfile ----
 
@@ -47,15 +47,34 @@ dr_vals <- map(files_in, \(x) {
 }) %>%
   bind_rows()
 
+# Grab a list of all towns we're processing to use in the SQL query. This is
+# based on the first two characters of the file name, which should be the
+# township code. Input files *must* be named correctly.
+dr_towns <- substr(basename(files_in), 1, 2)
+if (!any(dr_towns %in% ccao::town_dict$township_code)) {
+  stop("One or more township codes in the input files are not valid.")
+}
+
 # This SQL query will return townships, neighborhoods, and model values for
 # every PIN, as well as any associated sales used for training
 model_vals <- dbGetQuery(
-  conn = AWS_ATHENA_CONN_NOCTUA, read_file("provisional-ratio-curves.sql")
+  conn = AWS_ATHENA_CONN_NOCTUA,
+  glue_sql(
+    read_file("provisional-ratio-curves.sql"),
+    .con = AWS_ATHENA_CONN_NOCTUA
+  )
 )
 
 # Attach dr and model values to calculate ratios
 all_ratios <- dr_vals %>%
-  left_join(model_vals)
+  # Valuations provides a bunch of parcels of classes that are not part of the
+  # modeling pipeline. We strip these parcels out of the analysis.
+  inner_join(
+    model_vals %>%
+      select(pin)
+  ) %>%
+  full_join(model_vals, by = "pin") %>%
+  mutate(sale_excluded = is.na(desk_review_value) & !is.na(sale_price))
 
 walk(unique(all_ratios$township_name), \(x) {
   # Construct list for outputting multisheet .xlsx
