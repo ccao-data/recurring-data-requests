@@ -41,10 +41,16 @@ most_recent_pin AS (
             ORDER BY uni.year DESC
         ) AS rank
     FROM default.vw_pin_universe AS uni
+    -- Make sure we only grab parcels valued by the res avm, for the towns we're
+    -- processing.
+    INNER JOIN ccao.class_dict
+        ON uni.class = class_dict.class_code
+        AND class_dict.modeling_group IN ('SF', 'MF', 'BB')
     WHERE uni.year IN (
             CAST(YEAR(CURRENT_DATE) - 1 AS VARCHAR),
             CAST(YEAR(CURRENT_DATE) AS VARCHAR)
         )
+        AND uni.township_code IN ({dr_towns*}) -- noqa
 )
 
 SELECT
