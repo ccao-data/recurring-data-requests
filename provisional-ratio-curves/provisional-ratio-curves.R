@@ -77,11 +77,7 @@ all_ratios <- dr_vals %>%
   # Define an excluded sale as one that has a sale price but no provided desk
   # review value.
   mutate(
-    sale_excluded = case_when(
-      is.na(sale_price) ~ NA,
-      is.na(desk_review_value) & !is.na(sale_price) ~ TRUE,
-      TRUE ~ FALSE
-    )
+    sale_excluded = if_else(is.na(sale_price), NA, is.na(desk_review_value))
   )
 
 walk(unique(all_ratios$township_name), \(x) {
