@@ -51,7 +51,7 @@ dr_vals <- map(files_in, \(x) {
 # based on the first two characters of the file name, which should be the
 # township code. Input files *must* be named correctly.
 dr_towns <- substr(basename(files_in), 1, 2)
-if (!any(dr_towns %in% ccao::town_dict$township_code)) {
+if (!all(dr_towns %in% ccao::town_dict$township_code)) {
   stop("One or more township codes in the input files are not valid.")
 }
 
