@@ -76,7 +76,9 @@ all_ratios <- dr_vals %>%
   full_join(model_vals, by = "pin") %>%
   # Define an excluded sale as one that has a sale price but no provided desk
   # review value.
-  mutate(sale_excluded = is.na(desk_review_value) & !is.na(sale_price))
+  mutate(
+    sale_excluded = if_else(is.na(sale_price), NA, is.na(desk_review_value))
+  )
 
 walk(unique(all_ratios$township_name), \(x) {
   # Construct list for outputting multisheet .xlsx
