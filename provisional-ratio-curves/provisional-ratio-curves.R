@@ -30,8 +30,8 @@ year <- format(Sys.Date(), "%Y")
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
 data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves"
-input_path <- file.path("input", year)
-output_path <- file.path("output", year)
+input_path <- file.path(data_path, "input", year)
+output_path <- file.path(data_path, "output", year)
 files_in <- list.files(input_path, full.names = TRUE, pattern = "\\.xlsx$")
 
 # Flatfile ----
