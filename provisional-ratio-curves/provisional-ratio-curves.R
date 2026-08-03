@@ -156,7 +156,7 @@ walk(unique(all_ratios$township_name), \(x) {
 
   # Build x-axis labels with abbreviated price ranges per decile
   axis_labels <- output$`All Parcels` %>%
-    filter(!is.na(`Sale Price`), !is.na(`Price Decile`)) %>%
+    filter(!is.na(`Sale Price`), !`Sale Excluded`) %>%
     summarize(
       min_price = min(`Sale Price`),
       max_price = max(`Sale Price`),
