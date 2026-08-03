@@ -30,8 +30,8 @@ year <- format(Sys.Date(), "%Y")
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
 data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves"
-input_path <- file.path(data_path, "input", year)
-output_path <- file.path(data_path, "output", year)
+input_path <- file.path("input", year)
+output_path <- file.path("output", year)
 files_in <- list.files(input_path, full.names = TRUE, pattern = "\\.xlsx$")
 
 # Flatfile ----
@@ -87,14 +87,14 @@ walk(unique(all_ratios$township_name), \(x) {
     filter(township_name == x) %>%
     select(-township_name) %>%
     mutate(
-      price_decile = ntile(sale_price, 10),
+      price_decile = ntile(if_else(sale_excluded %in% TRUE, NA_real_, sale_price), 10),
       model_sale_ratio = model_value / sale_price,
       desk_review_sale_ratio = desk_review_value / sale_price
     )
 
   # Summarize ratios and price ranges by decile for .xlsx output
   output$`Ratio Deciles` <- output$`All Parcels` %>%
-    filter(!is.na(sale_price)) %>%
+    filter(!is.na(sale_price), !sale_excluded) %>%
     summarize(
       model_ratio = median(model_sale_ratio),
       model_cod = assessr::cod(model_sale_ratio),
@@ -114,7 +114,7 @@ walk(unique(all_ratios$township_name), \(x) {
 
   # Calculate vertical equity metrics for .xlsx output
   output$`Town-Level Stats` <- output$`All Parcels` %>%
-    filter(!is.na(sale_price)) %>%
+    filter(!is.na(sale_price), !sale_excluded) %>%
     summarize(
       model_ratio = median(model_sale_ratio),
       model_cod = assessr::cod(model_sale_ratio),
@@ -153,7 +153,7 @@ walk(unique(all_ratios$township_name), \(x) {
 
   # Build x-axis labels with abbreviated price ranges per decile
   axis_labels <- output$`All Parcels` %>%
-    filter(!is.na(`Sale Price`)) %>%
+    filter(!is.na(`Sale Price`), !is.na(`Price Decile`)) %>%
     summarize(
       min_price = min(`Sale Price`),
       max_price = max(`Sale Price`),
@@ -229,6 +229,7 @@ walk(unique(all_ratios$township_name), \(x) {
     select(town_nbhd, geometry)
 
   map_data <- output$`All Parcels` %>%
+    filter(!`Sale Excluded` %in% TRUE) %>%
     select(
       `Neighborhood Number`,
       `Model Sale Ratio`,
