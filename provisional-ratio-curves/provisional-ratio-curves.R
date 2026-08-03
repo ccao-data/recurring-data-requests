@@ -87,7 +87,10 @@ walk(unique(all_ratios$township_name), \(x) {
     filter(township_name == x) %>%
     select(-township_name) %>%
     mutate(
-      price_decile = ntile(na_if(sale_excluded, TRUE), 10),
+      price_decile = ntile(
+        if_else(sale_excluded %in% TRUE, NA_real_, sale_price),
+        10
+      ),
       model_sale_ratio = model_value / sale_price,
       desk_review_sale_ratio = desk_review_value / sale_price
     )
