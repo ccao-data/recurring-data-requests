@@ -232,7 +232,7 @@ walk(unique(all_ratios$township_name), \(x) {
     select(town_nbhd, geometry)
 
   map_data <- output$`All Parcels` %>%
-    filter(!`Sale Excluded` %in% TRUE) %>%
+    filter(!isTRUE(`Sale Excluded`)) %>%
     select(
       `Neighborhood Number`,
       `Model Sale Ratio`,
