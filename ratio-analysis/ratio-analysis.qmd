@@ -213,7 +213,7 @@ assessment cycle. CCAO Data's original sale sample included
 occurring between `r min_sale_date` and `r max_sale_date`, with sale
 prices ranging from `r town_stats$price_range`. Of these,
 **`r format(n_excluded_sales, big.mark = ",")`** sales were excluded
-at desk review, leaving a **final sample of
+as outliers by Valuations analysts, leaving a **final sample of
 `r format(n_final_sales, big.mark = ",")` sales**. The township
 contains **`r format(n_total_pins, big.mark = ",")` residential
 parcels**.
