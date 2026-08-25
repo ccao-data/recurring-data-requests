@@ -277,21 +277,7 @@ knitr::kable(
 )
 ```
 
-```{r cap-desc}
-cap_desc <- glue(
-  "Descriptive Statistics.",
-  "\\newline Summary of model and desk review assessed values and sale prices",
-  " across all properties, properties with arm's-length sales used in the",
-  " ratio analysis, and properties without qualifying sales.",
-  " Note: Some sales are excluded as non-arm's-length transactions,",
-  " so 'Sales Used' and 'No Sales' do not sum to 'All Properties'."
-)
-```
-
-```{r tbl-desc}
-#| tbl-cap: !expr 'cap_desc'
-#| tbl-pos: H
-
+```{r desc-helpers}
 no_sale <- all_parcels %>% filter(is.na(sale_price))
 
 fmt_n <- function(x) format(x, big.mark = ",")
@@ -299,66 +285,99 @@ fmt_dol <- function(x) paste0("\\$", format(round(x), big.mark = ","))
 fmt_pct <- function(changed, total) {
   paste0(round(changed / total * 100, 1), "\\%")
 }
-
 n_changed <- function(df) {
   sum(!is.na(df$model_value) & !is.na(df$desk_review_value) &
     df$model_value != df$desk_review_value) # nolint: indentation_linter.
 }
+```
 
-desc_table <- tibble(
-  Statistic = c(
-    "N",
-    "N DR Changes",
-    "\\% DR Changes",
-    "Median Model AV",
-    "Mean Model AV",
-    "Median DR AV",
-    "Mean DR AV",
-    "Median Sale Price",
-    "Mean Sale Price"
-  ),
-  `Sales Used` = c(
-    fmt_n(nrow(sales_df)),
-    fmt_n(n_changed(sales_df)),
-    fmt_pct(n_changed(sales_df), nrow(sales_df)),
+```{r cap-desc-av}
+cap_desc_av <- glue(
+  "Assessed Values by Group.",
+  "\\newline Model and desk review assessed values for properties",
+  " with qualifying arm's-length sales (Sold), properties without",
+  " a recorded sale (Unsold), and all residential parcels (All)."
+)
+```
+
+```{r tbl-desc-av}
+#| tbl-cap: !expr 'cap_desc_av'
+#| tbl-pos: H
+
+av_table <- tibble(
+  Group = c("Sold", "Unsold", "All"),
+  `Median Model AV` = c(
     fmt_dol(median(sales_df$model_value, na.rm = TRUE)),
-    fmt_dol(mean(sales_df$model_value, na.rm = TRUE)),
-    fmt_dol(median(sales_df$desk_review_value, na.rm = TRUE)),
-    fmt_dol(mean(sales_df$desk_review_value, na.rm = TRUE)),
-    fmt_dol(median(sales_df$sale_price, na.rm = TRUE)),
-    fmt_dol(mean(sales_df$sale_price, na.rm = TRUE))
-  ),
-  `All Properties` = c(
-    fmt_n(nrow(all_parcels)),
-    fmt_n(n_changed(all_parcels)),
-    fmt_pct(n_changed(all_parcels), nrow(all_parcels)),
-    fmt_dol(median(all_parcels$model_value, na.rm = TRUE)),
-    fmt_dol(mean(all_parcels$model_value, na.rm = TRUE)),
-    fmt_dol(median(all_parcels$desk_review_value, na.rm = TRUE)),
-    fmt_dol(mean(all_parcels$desk_review_value, na.rm = TRUE)),
-    "---",
-    "---"
-  ),
-  `No Sales` = c(
-    fmt_n(nrow(no_sale)),
-    "---",
-    "---",
     fmt_dol(median(no_sale$model_value, na.rm = TRUE)),
+    fmt_dol(median(all_parcels$model_value, na.rm = TRUE))
+  ),
+  `Mean Model AV` = c(
+    fmt_dol(mean(sales_df$model_value, na.rm = TRUE)),
     fmt_dol(mean(no_sale$model_value, na.rm = TRUE)),
+    fmt_dol(mean(all_parcels$model_value, na.rm = TRUE))
+  ),
+  `Median DR AV` = c(
+    fmt_dol(median(sales_df$desk_review_value, na.rm = TRUE)),
     fmt_dol(median(no_sale$desk_review_value, na.rm = TRUE)),
+    fmt_dol(median(all_parcels$desk_review_value, na.rm = TRUE))
+  ),
+  `Mean DR AV` = c(
+    fmt_dol(mean(sales_df$desk_review_value, na.rm = TRUE)),
     fmt_dol(mean(no_sale$desk_review_value, na.rm = TRUE)),
-    "---",
-    "---"
+    fmt_dol(mean(all_parcels$desk_review_value, na.rm = TRUE))
   )
 )
 
 knitr::kable(
-  desc_table,
-  format    = "latex",
-  escape    = FALSE,
-  booktabs  = FALSE,
-  linesep   = "",
-  align     = c("l", "r", "r", "r")
+  av_table,
+  format   = "latex",
+  escape   = FALSE,
+  booktabs = FALSE,
+  linesep  = "",
+  align    = c("l", "r", "r", "r", "r")
+)
+```
+
+```{r cap-desc-changes}
+cap_desc_changes <- glue(
+  "Desk Review Changes by Group.",
+  "\\newline Number and share of properties whose assessed value was",
+  " changed by desk review. Sold and Unsold do not sum to All because",
+  " properties with non-arm's-length sales are counted in All but",
+  " neither in Sold nor Unsold."
+)
+```
+
+```{r tbl-desc-changes}
+#| tbl-cap: !expr 'cap_desc_changes'
+#| tbl-pos: H
+
+changes_table <- tibble(
+  Group = c("Sold", "Unsold", "All"),
+  N = c(
+    fmt_n(nrow(sales_df)),
+    fmt_n(nrow(no_sale)),
+    fmt_n(nrow(all_parcels))
+  ),
+  `N DR Changes` = c(
+    fmt_n(n_changed(sales_df)),
+    fmt_n(n_changed(no_sale)),
+    fmt_n(n_changed(all_parcels))
+  ),
+  `\\% DR Changes` = c(
+    fmt_pct(n_changed(sales_df), nrow(sales_df)),
+    fmt_pct(n_changed(no_sale), nrow(no_sale)),
+    fmt_pct(n_changed(all_parcels), nrow(all_parcels))
+  )
+)
+
+knitr::kable(
+  changes_table,
+  format   = "latex",
+  escape   = FALSE,
+  booktabs = FALSE,
+  linesep  = "",
+  align    = c("l", "r", "r", "r")
 )
 ```
 
