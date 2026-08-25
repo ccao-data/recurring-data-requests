@@ -225,6 +225,58 @@ This analysis compares ratio statistics from two stages:
 
 ## Results
 
+```{r cap-1}
+cap_fig1 <- glue(
+  "Town-Level IAAO Statistics.",
+  "\\newline Green shading meets IAAO standard; orange shading does not."
+)
+```
+
+```{r tbl-1}
+#| tbl-cap: !expr 'cap_fig1'
+#| tbl-pos: H
+
+ts <- town_stats
+
+iaao_table <- data.frame(
+  Metric = c("Median Ratio", "COD", "PRD", "PRB", "MKI", "N Sales"),
+  `IAAO Standard` = c(
+    "0.90 -- 1.10",
+    "5.0 -- 15.0",
+    "0.98 -- 1.03",
+    "$\\pm$0.05",
+    "0.90 -- 1.10",
+    "---"
+  ),
+  Model = c(
+    iaao_color_cell("Median Ratio", ts$model_ratio, digits = 3),
+    iaao_color_cell("COD", ts$model_cod, digits = 1),
+    iaao_color_cell("PRD", ts$model_prd, digits = 4),
+    iaao_color_cell("PRB", ts$model_prb, digits = 4),
+    iaao_color_cell("MKI", ts$model_mki, digits = 4),
+  ),
+  `Desk Review` = c(
+    iaao_color_cell("Median Ratio", ts$desk_review_ratio, digits = 3),
+    iaao_color_cell("COD", ts$desk_review_cod, digits = 1),
+    iaao_color_cell("PRD", ts$desk_review_prd, digits = 4),
+    iaao_color_cell("PRB", ts$desk_review_prb, digits = 4),
+    iaao_color_cell("MKI", ts$desk_review_mki, digits = 4),
+    format(ts$number_of_sales, big.mark = ",")
+  ),
+  check.names = FALSE
+)
+
+knitr::kable(
+  iaao_table,
+  format    = "latex",
+  escape    = FALSE,
+  booktabs  = FALSE,
+  linesep   = "",
+  col.names = c("Metric", "IAAO Standard", "Model", "Desk Review"),
+  align     = c("l", "c", "r", "r")
+)
+```
+
 ```{r cap-desc}
 cap_desc <- glue(
   "Descriptive Statistics.",
@@ -310,58 +362,6 @@ knitr::kable(
 )
 ```
 
-```{r cap-1}
-cap_fig1 <- glue(
-  "Town-Level IAAO Statistics.",
-  "\\newline Green shading meets IAAO standard; orange shading does not."
-)
-```
-
-```{r tbl-1}
-#| tbl-cap: !expr 'cap_fig1'
-#| tbl-pos: H
-
-ts <- town_stats
-
-iaao_table <- data.frame(
-  Metric = c("Median Ratio", "COD", "PRD", "PRB", "MKI", "N Sales"),
-  `IAAO Standard` = c(
-    "0.90 -- 1.10",
-    "5.0 -- 15.0",
-    "0.98 -- 1.03",
-    "$\\pm$0.05",
-    "0.90 -- 1.10",
-    "---"
-  ),
-  Model = c(
-    iaao_color_cell("Median Ratio", ts$model_ratio, digits = 3),
-    iaao_color_cell("COD", ts$model_cod, digits = 1),
-    iaao_color_cell("PRD", ts$model_prd, digits = 4),
-    iaao_color_cell("PRB", ts$model_prb, digits = 4),
-    iaao_color_cell("MKI", ts$model_mki, digits = 4),
-  ),
-  `Desk Review` = c(
-    iaao_color_cell("Median Ratio", ts$desk_review_ratio, digits = 3),
-    iaao_color_cell("COD", ts$desk_review_cod, digits = 1),
-    iaao_color_cell("PRD", ts$desk_review_prd, digits = 4),
-    iaao_color_cell("PRB", ts$desk_review_prb, digits = 4),
-    iaao_color_cell("MKI", ts$desk_review_mki, digits = 4),
-    format(ts$number_of_sales, big.mark = ",")
-  ),
-  check.names = FALSE
-)
-
-knitr::kable(
-  iaao_table,
-  format    = "latex",
-  escape    = FALSE,
-  booktabs  = FALSE,
-  linesep   = "",
-  col.names = c("Metric", "IAAO Standard", "Model", "Desk Review"),
-  align     = c("l", "c", "r", "r")
-)
-```
-
 ```{r nbhd-ratios-prep}
 nbhd_ratios <- all_parcels %>%
   filter(!is.na(sale_price), !sale_excluded %in% TRUE) %>%
@@ -372,50 +372,6 @@ nbhd_ratios <- all_parcels %>%
     n_sales     = n(),
     .by         = neighborhood_number
   )
-```
-
-{{< pagebreak >}}
-
-```{r cap-2}
-cap_fig2 <- glue(
-  "Neighborhood-Level Median Ratios.",
-  "\\newline Blue indicates under-assessment;",
-  " Green (0.90–1.1) indicates within standard;",
-  " Red indicates over-assessment."
-)
-```
-
-```{r tbl-2}
-#| tbl-cap: !expr 'cap_fig2'
-
-all_nbhds <- all_parcels %>%
-  distinct(neighborhood_number) %>%
-  arrange(neighborhood_number)
-
-nbhd_table_data <- all_nbhds %>%
-  left_join(nbhd_ratios, by = "neighborhood_number") %>%
-  mutate(
-    `NBHD` = neighborhood_number,
-    `Model Ratio` = ifelse(
-      is.na(model_ratio), "---", color_ratio_cell(model_ratio, digits = 3)
-    ),
-    `DR Ratio` = ifelse(
-      is.na(dr_ratio), "---", color_ratio_cell(dr_ratio, digits = 3)
-    ),
-    `N Sales` = ifelse(is.na(n_sales), 0L, n_sales)
-  ) %>%
-  select(`NBHD`, `Model Ratio`, `DR Ratio`, `N Sales`)
-
-knitr::kable(
-  nbhd_table_data,
-  format    = "latex",
-  escape    = FALSE,
-  booktabs  = FALSE,
-  linesep   = "",
-  longtable = TRUE,
-  align     = c("l", "r", "r", "r"),
-  col.names = c("NBHD", "Model Ratio", "DR Ratio", "N Sales")
-)
 ```
 
 ```{r cap-3}
@@ -749,3 +705,46 @@ print(map_diff, vp = viewport(
 ))
 ```
 
+{{< pagebreak >}}
+
+```{r cap-2}
+cap_fig2 <- glue(
+  "Neighborhood-Level Median Ratios.",
+  "\\newline Blue indicates under-assessment;",
+  " Green (0.90–1.1) indicates within standard;",
+  " Red indicates over-assessment."
+)
+```
+
+```{r tbl-2}
+#| tbl-cap: !expr 'cap_fig2'
+
+all_nbhds <- all_parcels %>%
+  distinct(neighborhood_number) %>%
+  arrange(neighborhood_number)
+
+nbhd_table_data <- all_nbhds %>%
+  left_join(nbhd_ratios, by = "neighborhood_number") %>%
+  mutate(
+    `NBHD` = neighborhood_number,
+    `Model Ratio` = ifelse(
+      is.na(model_ratio), "---", color_ratio_cell(model_ratio, digits = 3)
+    ),
+    `DR Ratio` = ifelse(
+      is.na(dr_ratio), "---", color_ratio_cell(dr_ratio, digits = 3)
+    ),
+    `N Sales` = ifelse(is.na(n_sales), 0L, n_sales)
+  ) %>%
+  select(`NBHD`, `Model Ratio`, `DR Ratio`, `N Sales`)
+
+knitr::kable(
+  nbhd_table_data,
+  format    = "latex",
+  escape    = FALSE,
+  booktabs  = FALSE,
+  linesep   = "",
+  longtable = TRUE,
+  align     = c("l", "r", "r", "r"),
+  col.names = c("NBHD", "Model Ratio", "DR Ratio", "N Sales")
+)
+```
