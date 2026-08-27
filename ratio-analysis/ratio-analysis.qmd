@@ -51,7 +51,7 @@ town_name <- ccao::town_dict %>%
 dr_wb <- loadWorkbook(input_file)
 dr_vals <- read.xlsx(dr_wb, sheet = 1) %>%
   tibble(.name_repair = "unique") %>%
-  select(pin = PIN, desk_review_value = Desk.Review.Value)
+  select(pin = PIN, desk_review_FMV = Desk.Review.Value)
 
 
 # Athena: pull model values and the residential PIN universe
@@ -75,15 +75,16 @@ dbDisconnect(conn)
 all_parcels <- dr_vals %>%
   inner_join(select(model_vals, pin), by = "pin") %>%
   full_join(model_vals, by = "pin") %>%
+  rename(model_FMV = model_value) %>%
   filter(township_name == town_name) %>%
   mutate(
     sale_date = as.Date(sale_date),
-    sale_excluded = if_else(is.na(sale_price), NA, is.na(desk_review_value)),
+    sale_excluded = if_else(is.na(sale_price), NA, is.na(desk_review_FMV)),
     price_decile = ntile(
       if_else(sale_excluded %in% TRUE, NA_real_, sale_price), 10
     ),
-    model_sale_ratio = model_value / sale_price,
-    desk_review_sale_ratio = desk_review_value / sale_price
+    model_sale_ratio = model_FMV / sale_price,
+    desk_review_sale_ratio = desk_review_FMV / sale_price
   )
 
 # Compute statistics
@@ -93,19 +94,19 @@ sales_df <- all_parcels %>%
 town_stats <- tibble(
   model_ratio = median(sales_df$model_sale_ratio, na.rm = TRUE),
   model_cod = assessr::cod(sales_df$model_sale_ratio),
-  model_prd = assessr::prd(sales_df$model_value, sales_df$sale_price),
-  model_prb = assessr::prb(sales_df$model_value, sales_df$sale_price),
-  model_mki = assessr::mki(sales_df$model_value, sales_df$sale_price),
+  model_prd = assessr::prd(sales_df$model_FMV, sales_df$sale_price),
+  model_prb = assessr::prb(sales_df$model_FMV, sales_df$sale_price),
+  model_mki = assessr::mki(sales_df$model_FMV, sales_df$sale_price),
   desk_review_ratio = median(sales_df$desk_review_sale_ratio, na.rm = TRUE),
   desk_review_cod = assessr::cod(sales_df$desk_review_sale_ratio),
   desk_review_prd = assessr::prd(
-    sales_df$desk_review_value, sales_df$sale_price
+    sales_df$desk_review_FMV, sales_df$sale_price
   ),
   desk_review_prb = assessr::prb(
-    sales_df$desk_review_value, sales_df$sale_price
+    sales_df$desk_review_FMV, sales_df$sale_price
   ),
   desk_review_mki = assessr::mki(
-    sales_df$desk_review_value, sales_df$sale_price
+    sales_df$desk_review_FMV, sales_df$sale_price
   ),
   price_range = paste(
     scales::dollar(min(sales_df$sale_price)),
@@ -143,39 +144,62 @@ min_sale_date <- format(min(sale_dates), "%B %d, %Y")
 max_sale_date <- format(max(sale_dates), "%B %d, %Y")
 
 
-# Calculate Stats
+# Metric definitions: name, digits, IAAO lo/hi bounds, band mid and half-span
+metric_meta <- tibble(
+  name = c("Median Ratio", "COD", "PRD", "PRB", "MKI"),
+  digits = c(3, 1, 4, 4, 4),
+  lo = c(0.90, 5.0, 0.98, -0.05, 0.90),
+  hi = c(1.10, 15.0, 1.03, 0.05, 1.10),
+  mid = c(1.000, 10.0, 1.005, 0.00, 1.000),
+  half_span = c(0.100, 5.0, 0.025, 0.05, 0.100),
+  standard_label = c(
+    "0.90 -- 1.10", "5.0 -- 15.0", "0.98 -- 1.03", "$\\pm$0.05", "0.90 -- 1.10"
+  )
+)
+
+# Color palette
+pal <- list(
+  pass         = "A8DDB5",
+  fail         = "FDBB84",
+  model        = "#A569BD",
+  desk_review  = "#2C2C2C",
+  ratio_na     = "EEEEEE",
+  ratio_colors = c("4575B4", "74ADD1", "66BD63", "FC8D59", "D73027"),
+  ratio_values = c(0.70, 0.8999, 0.9001, 1.0999, 1.1001, 1.30),
+  ratio_limits = c(0.70, 1.30),
+  ratio_breaks = c(0.80, 0.90, 1.00, 1.10, 1.20),
+  iaao_band    = "#A8DDB5"
+)
 
 iaao_check <- function(metric, value) {
-  switch(metric,
-    "Median Ratio" = value >= 0.90 & value <= 1.10,
-    "COD"          = value >= 5.0 & value <= 15.0,
-    "PRD"          = value >= 0.98 & value <= 1.03,
-    "PRB"          = value >= -0.05 & value <= 0.05,
-    "MKI"          = value >= 0.90 & value <= 1.10,
-    NA
-  )
+  m <- metric_meta[metric_meta$name == metric, ]
+  if (nrow(m) == 0) {
+    return(NA)
+  }
+  value >= m$lo & value <= m$hi
 }
 
-iaao_color_cell <- function(metric, value, digits = 4) {
+iaao_color_cell <- function(metric, value) {
+  m <- metric_meta[metric_meta$name == metric, ]
+  digits <- if (nrow(m) > 0) m$digits else 4
   v <- round(value, digits)
   passes <- iaao_check(metric, value)
   if (is.na(passes)) {
     return(as.character(v))
   }
-  hex <- if (passes) "A8DDB5" else "FDBB84"
+  hex <- if (passes) pal$pass else pal$fail
   paste0("\\cellcolor[HTML]{", hex, "} ", v)
 }
 
 ratio_to_hex <- function(ratio) {
+  rc <- pal$ratio_colors
   case_when(
-    is.na(ratio) ~ "EEEEEE",
-    ratio < 0.80 ~ "4575B4",
-    ratio < 0.90 ~ "74ADD1",
-    ratio < 0.95 ~ "ABD9E9",
-    ratio <= 1.05 ~ "66BD63",
-    ratio <= 1.10 ~ "FEE08B",
-    ratio <= 1.15 ~ "FC8D59",
-    TRUE ~ "D73027"
+    is.na(ratio) ~ pal$ratio_na,
+    ratio < 0.80 ~ rc[1],
+    ratio < 0.90 ~ rc[2],
+    ratio <= 1.10 ~ rc[3],
+    ratio <= 1.20 ~ rc[4],
+    TRUE ~ rc[5]
   )
 }
 
@@ -186,21 +210,16 @@ color_ratio_cell <- function(ratio, digits = 3) {
 }
 
 ratio_fill_scale <- function(name = "Median\nRatio") {
+  rc <- paste0("#", pal$ratio_colors)
   scale_fill_gradientn(
-    colors = c(
-      "#4575B4", "#74ADD1", "#ABD9E9",
-      "#66BD63", "#66BD63", "#66BD63",
-      "#FEE08B", "#FC8D59", "#D73027"
-    ),
-    values = scales::rescale(
-      c(0.70, 0.80, 0.90, 0.9499, 0.95, 1.0499, 1.05, 1.15, 1.30)
-    ),
-    limits = c(0.70, 1.30),
-    oob = scales::squish,
-    na.value = "gray90",
-    breaks = c(0.80, 0.90, 0.95, 1.00, 1.05, 1.10, 1.20),
-    labels = c("0.80", "0.90", "0.95", "1.00", "1.05", "1.10", "1.20"),
-    name = name
+    colors   = c(rc[1], rc[2], rc[3], rc[3], rc[4], rc[5]),
+    values   = scales::rescale(pal$ratio_values),
+    limits   = pal$ratio_limits,
+    oob      = scales::squish,
+    na.value = paste0("#", pal$ratio_na),
+    breaks   = pal$ratio_breaks,
+    labels   = sprintf("%.2f", pal$ratio_breaks),
+    name     = name
   )
 }
 ```
@@ -239,29 +258,22 @@ cap_fig1 <- glue(
 ts <- town_stats
 
 iaao_table <- data.frame(
-  Metric = c("Median Ratio", "COD", "PRD", "PRB", "MKI", "N Sales"),
-  `IAAO Standard` = c(
-    "0.90 -- 1.10",
-    "5.0 -- 15.0",
-    "0.98 -- 1.03",
-    "$\\pm$0.05",
-    "0.90 -- 1.10",
-    "---"
-  ),
+  Metric = c(metric_meta$name, "N Sales"),
+  `IAAO Standard` = c(metric_meta$standard_label, "---"),
   Model = c(
-    iaao_color_cell("Median Ratio", ts$model_ratio, digits = 3),
-    iaao_color_cell("COD", ts$model_cod, digits = 1),
-    iaao_color_cell("PRD", ts$model_prd, digits = 4),
-    iaao_color_cell("PRB", ts$model_prb, digits = 4),
-    iaao_color_cell("MKI", ts$model_mki, digits = 4),
+    iaao_color_cell("Median Ratio", ts$model_ratio),
+    iaao_color_cell("COD", ts$model_cod),
+    iaao_color_cell("PRD", ts$model_prd),
+    iaao_color_cell("PRB", ts$model_prb),
+    iaao_color_cell("MKI", ts$model_mki),
     format(ts$number_of_sales, big.mark = ",")
   ),
   `Desk Review` = c(
-    iaao_color_cell("Median Ratio", ts$desk_review_ratio, digits = 3),
-    iaao_color_cell("COD", ts$desk_review_cod, digits = 1),
-    iaao_color_cell("PRD", ts$desk_review_prd, digits = 4),
-    iaao_color_cell("PRB", ts$desk_review_prb, digits = 4),
-    iaao_color_cell("MKI", ts$desk_review_mki, digits = 4),
+    iaao_color_cell("Median Ratio", ts$desk_review_ratio),
+    iaao_color_cell("COD", ts$desk_review_cod),
+    iaao_color_cell("PRD", ts$desk_review_prd),
+    iaao_color_cell("PRB", ts$desk_review_prb),
+    iaao_color_cell("MKI", ts$desk_review_mki),
     format(ts$number_of_sales, big.mark = ",")
   ),
   check.names = FALSE
@@ -278,6 +290,124 @@ knitr::kable(
 )
 ```
 
+```{r cap-3}
+cap_fig3 <- glue(
+  "IAAO Metrics: Model vs. Desk Review.",
+  "\\newline Green shaded band shows the IAAO acceptable range for each metric."
+)
+```
+
+```{r fig-3}
+#| fig-cap: !expr 'cap_fig3'
+#| fig-pos: H
+#| fig-cap-location: top
+#| fig-height: 5
+#| fig-width: 6.5
+
+metric_order <- metric_meta$name
+
+ts_wide <- tibble(
+  Metric = factor(metric_order, levels = metric_order),
+  Model = c(
+    ts$model_ratio, ts$model_cod, ts$model_prd,
+    ts$model_prb, ts$model_mki
+  ),
+  `Desk Review` = c(
+    ts$desk_review_ratio, ts$desk_review_cod, ts$desk_review_prd,
+    ts$desk_review_prb, ts$desk_review_mki
+  )
+)
+
+ts_long <- ts_wide %>%
+  pivot_longer(
+    c(Model, `Desk Review`),
+    names_to = "Stage", values_to = "Value"
+  ) %>%
+  mutate(Stage = factor(Stage, levels = c("Model", "Desk Review"))) %>%
+  left_join(select(metric_meta, Metric = name, digits), by = "Metric") %>%
+  mutate(label = round(Value, pmin(digits, 2)))
+
+iaao_bands <- metric_meta %>%
+  mutate(Metric = factor(name, levels = metric_order)) %>%
+  select(Metric, xmin = lo, xmax = hi)
+
+iaao_meta <- metric_meta %>%
+  mutate(Metric = factor(name, levels = metric_order)) %>%
+  select(Metric, mid, half_span)
+
+sym_anchors <- ts_long %>%
+  left_join(iaao_meta, by = "Metric") %>%
+  mutate(dev = abs(Value - mid)) %>%
+  group_by(Metric, mid, half_span) %>%
+  summarize(
+    max_dev      = max(dev, na.rm = TRUE),
+    out_of_range = any(dev > half_span, na.rm = TRUE),
+    .groups      = "drop"
+  ) %>%
+  filter(out_of_range) %>%
+  mutate(
+    half_ax = pmax(half_span, max_dev) * 1.15,
+    x_lo    = mid - half_ax,
+    x_hi    = mid + half_ax
+  ) %>%
+  select(Metric, x_lo, x_hi) %>%
+  pivot_longer(
+    c(x_lo, x_hi),
+    names_to = "side", values_to = "x"
+  ) %>%
+  select(Metric, x)
+
+scale_anchors <- bind_rows(
+  sym_anchors,
+  tibble(Metric = factor("COD", levels = metric_order), x = 0)
+)
+
+ggplot() +
+  geom_point(
+    data  = scale_anchors,
+    aes(x = x, y = 1),
+    size  = 0,
+    alpha = 0
+  ) +
+  geom_rect(
+    data = iaao_bands,
+    aes(xmin = xmin, xmax = xmax, ymin = 0.1, ymax = 1.9),
+    fill = pal$iaao_band, alpha = 0.45
+  ) +
+  geom_segment(
+    data = ts_wide,
+    aes(x = Model, xend = `Desk Review`, y = 1, yend = 1),
+    color = "gray40", linewidth = 2, lineend = "round"
+  ) +
+  geom_point(
+    data  = ts_long,
+    aes(x = Value, y = 1, color = Stage, shape = Stage),
+    size  = 5
+  ) +
+  geom_text(
+    data = ts_long,
+    aes(x = Value, y = 1, label = label, color = Stage),
+    vjust = -1.6, size = 3, fontface = "bold"
+  ) +
+  facet_wrap(~Metric, scales = "free_x", ncol = 1) +
+  scale_color_manual(
+    values = c("Model" = pal$model, "Desk Review" = pal$desk_review)
+  ) +
+  scale_shape_manual(values = c("Model" = 16, "Desk Review" = 17)) +
+  scale_y_continuous(limits = c(0, 2)) +
+  coord_cartesian(clip = "off") +
+  theme_minimal(base_size = 11) +
+  theme(
+    axis.text.y        = element_blank(),
+    axis.ticks.y       = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    strip.text         = element_text(face = "bold", size = 11),
+    legend.position    = "bottom"
+  ) +
+  labs(x = NULL, y = NULL, color = "Stage", shape = "Stage")
+```
+
 ```{r desc-helpers}
 no_sale <- all_parcels %>% filter(is.na(sale_price))
 
@@ -287,20 +417,15 @@ fmt_pct <- function(changed, total) {
   paste0(round(changed / total * 100, 1), "\\%")
 }
 n_changed <- function(df) {
-  sum(!is.na(df$model_value) & !is.na(df$desk_review_value) &
-    df$model_value != df$desk_review_value) # nolint: indentation_linter.
-}
-total_shift <- function(df) {
-  changed <- !is.na(df$model_value) & !is.na(df$desk_review_value) &
-    df$model_value != df$desk_review_value # nolint: indentation_linter.
-  sum(df$desk_review_value[changed] - df$model_value[changed], na.rm = TRUE)
+  sum(!is.na(df$model_FMV) & !is.na(df$desk_review_FMV) &
+    df$model_FMV != df$desk_review_FMV) # nolint: indentation_linter.
 }
 ```
 
 ```{r cap-desc-av}
 cap_desc_av <- glue(
-  "Assessed Values by Group.",
-  "\\newline Model and desk review assessed values for properties",
+  "Fair Market Values by Group.",
+  "\\newline Model and desk review fair market values for properties",
   " with qualifying arm's-length sales (Sold), properties without",
   " a recorded sale (Unsold), and all residential parcels (All)."
 )
@@ -312,25 +437,25 @@ cap_desc_av <- glue(
 
 av_table <- tibble(
   Group = c("Sold", "Unsold", "All"),
-  `Median Model AV` = c(
-    fmt_dol(median(sales_df$model_value, na.rm = TRUE)),
-    fmt_dol(median(no_sale$model_value, na.rm = TRUE)),
-    fmt_dol(median(all_parcels$model_value, na.rm = TRUE))
+  `Median Model FMV` = c(
+    fmt_dol(median(sales_df$model_FMV, na.rm = TRUE)),
+    fmt_dol(median(no_sale$model_FMV, na.rm = TRUE)),
+    fmt_dol(median(all_parcels$model_FMV, na.rm = TRUE))
   ),
-  `Mean Model AV` = c(
-    fmt_dol(mean(sales_df$model_value, na.rm = TRUE)),
-    fmt_dol(mean(no_sale$model_value, na.rm = TRUE)),
-    fmt_dol(mean(all_parcels$model_value, na.rm = TRUE))
+  `Median DR FMV` = c(
+    fmt_dol(median(sales_df$desk_review_FMV, na.rm = TRUE)),
+    fmt_dol(median(no_sale$desk_review_FMV, na.rm = TRUE)),
+    fmt_dol(median(all_parcels$desk_review_FMV, na.rm = TRUE))
   ),
-  `Median DR AV` = c(
-    fmt_dol(median(sales_df$desk_review_value, na.rm = TRUE)),
-    fmt_dol(median(no_sale$desk_review_value, na.rm = TRUE)),
-    fmt_dol(median(all_parcels$desk_review_value, na.rm = TRUE))
+  `Mean Model FMV` = c(
+    fmt_dol(mean(sales_df$model_FMV, na.rm = TRUE)),
+    fmt_dol(mean(no_sale$model_FMV, na.rm = TRUE)),
+    fmt_dol(mean(all_parcels$model_FMV, na.rm = TRUE))
   ),
-  `Mean DR AV` = c(
-    fmt_dol(mean(sales_df$desk_review_value, na.rm = TRUE)),
-    fmt_dol(mean(no_sale$desk_review_value, na.rm = TRUE)),
-    fmt_dol(mean(all_parcels$desk_review_value, na.rm = TRUE))
+  `Mean DR FMV` = c(
+    fmt_dol(mean(sales_df$desk_review_FMV, na.rm = TRUE)),
+    fmt_dol(mean(no_sale$desk_review_FMV, na.rm = TRUE)),
+    fmt_dol(mean(all_parcels$desk_review_FMV, na.rm = TRUE))
   )
 )
 
@@ -374,11 +499,6 @@ changes_table <- tibble(
     fmt_pct(n_changed(sales_df), nrow(sales_df)),
     fmt_pct(n_changed(no_sale), nrow(no_sale)),
     fmt_pct(n_changed(all_parcels), nrow(all_parcels))
-  ),
-  `Total AV Shift` = c(
-    fmt_dol(total_shift(sales_df)),
-    fmt_dol(total_shift(no_sale)),
-    fmt_dol(total_shift(all_parcels))
   )
 )
 
@@ -388,7 +508,7 @@ knitr::kable(
   escape   = FALSE,
   booktabs = FALSE,
   linesep  = "",
-  align    = c("l", "r", "r", "r", "r")
+  align    = c("l", "r", "r", "r")
 )
 ```
 
@@ -402,125 +522,6 @@ nbhd_ratios <- all_parcels %>%
     n_sales     = n(),
     .by         = neighborhood_number
   )
-```
-
-```{r cap-3}
-cap_fig3 <- glue(
-  "IAAO Metrics: Model vs. Desk Review.",
-  "\\newline Green shaded band shows the IAAO acceptable range for each metric."
-)
-```
-
-```{r fig-3}
-#| fig-cap: !expr 'cap_fig3'
-#| fig-pos: H
-#| fig-cap-location: top
-#| fig-height: 7
-#| fig-width: 7
-
-metric_order <- c("Median Ratio", "COD", "PRD", "PRB", "MKI")
-
-ts_wide <- tibble(
-  Metric = factor(metric_order, levels = metric_order),
-  Model = c(
-    ts$model_ratio, ts$model_cod, ts$model_prd,
-    ts$model_prb, ts$model_mki
-  ),
-  `Desk Review` = c(
-    ts$desk_review_ratio, ts$desk_review_cod, ts$desk_review_prd,
-    ts$desk_review_prb, ts$desk_review_mki
-  )
-)
-
-ts_long <- ts_wide %>%
-  pivot_longer(
-    c(Model, `Desk Review`),
-    names_to = "Stage", values_to = "Value"
-  ) %>%
-  mutate(Stage = factor(Stage, levels = c("Model", "Desk Review")))
-
-iaao_bands <- tibble(
-  Metric = factor(metric_order, levels = metric_order),
-  xmin   = c(0.90, 5.0, 0.98, -0.05, 0.90),
-  xmax   = c(1.10, 15.0, 1.03, 0.05, 1.10)
-)
-
-iaao_meta <- tibble(
-  Metric    = factor(metric_order, levels = metric_order),
-  mid       = c(1.000, 10.0, 1.005, 0.00, 1.000),
-  half_span = c(0.100, 5.0, 0.025, 0.05, 0.100)
-)
-
-sym_anchors <- ts_long %>%
-  left_join(iaao_meta, by = "Metric") %>%
-  mutate(dev = abs(Value - mid)) %>%
-  group_by(Metric, mid, half_span) %>%
-  summarize(
-    max_dev      = max(dev, na.rm = TRUE),
-    out_of_range = any(dev > half_span, na.rm = TRUE),
-    .groups      = "drop"
-  ) %>%
-  filter(out_of_range) %>%
-  mutate(
-    half_ax = pmax(half_span, max_dev) * 1.15,
-    x_lo    = mid - half_ax,
-    x_hi    = mid + half_ax
-  ) %>%
-  select(Metric, x_lo, x_hi) %>%
-  pivot_longer(
-    c(x_lo, x_hi),
-    names_to = "side", values_to = "x"
-  ) %>%
-  select(Metric, x)
-
-scale_anchors <- bind_rows(
-  sym_anchors,
-  tibble(Metric = factor("COD", levels = metric_order), x = 0)
-)
-
-ggplot() +
-  geom_point(
-    data  = scale_anchors,
-    aes(x = x, y = 1),
-    size  = 0,
-    alpha = 0
-  ) +
-  geom_rect(
-    data = iaao_bands,
-    aes(xmin = xmin, xmax = xmax, ymin = 0.1, ymax = 1.9),
-    fill = "#A8DDB5", alpha = 0.45
-  ) +
-  geom_segment(
-    data = ts_wide,
-    aes(x = Model, xend = `Desk Review`, y = 1, yend = 1),
-    color = "gray40", linewidth = 2, lineend = "round"
-  ) +
-  geom_point(
-    data  = ts_long,
-    aes(x = Value, y = 1, color = Stage, shape = Stage),
-    size  = 5
-  ) +
-  geom_text(
-    data = ts_long,
-    aes(x = Value, y = 1, label = round(Value, 3), color = Stage),
-    vjust = -1.6, size = 3, fontface = "bold"
-  ) +
-  facet_wrap(~Metric, scales = "free_x", ncol = 1) +
-  scale_color_manual(
-    values = c("Model" = "#A569BD", "Desk Review" = "#2C2C2C")
-  ) +
-  scale_shape_manual(values = c("Model" = 16, "Desk Review" = 17)) +
-  scale_y_continuous(limits = c(0, 2)) +
-  theme_minimal(base_size = 11) +
-  theme(
-    axis.text.y        = element_blank(),
-    axis.ticks.y       = element_blank(),
-    panel.grid.major.y = element_blank(),
-    panel.grid.minor.y = element_blank(),
-    strip.text         = element_text(face = "bold", size = 11),
-    legend.position    = "bottom"
-  ) +
-  labs(x = NULL, y = NULL, color = "Stage", shape = "Stage")
 ```
 
 ```{r cap-4}
@@ -585,7 +586,7 @@ ggplot(
 ) +
   annotate("rect",
     xmin = -Inf, xmax = Inf, ymin = 0.9, ymax = 1.1,
-    fill = "#66BD63", alpha = 0.12
+    fill = pal$iaao_band, alpha = 0.12
   ) +
   geom_hline(yintercept = 1, color = "darkgreen", linewidth = 1) +
   geom_hline(
@@ -601,7 +602,7 @@ ggplot(
   geom_line(linewidth = 1) +
   geom_label(show.legend = FALSE, size = 3) +
   scale_color_manual(
-    values = c("Model" = "#A569BD", "Desk Review" = "#2C2C2C")
+    values = c("Model" = pal$model, "Desk Review" = pal$desk_review)
   ) +
   scale_x_continuous(breaks = 1:10, labels = axis_labels) +
   scale_y_continuous(
@@ -653,8 +654,7 @@ neighborhoods <- ccao::nbhd_shp %>%
   select(town_nbhd, geometry)
 
 map_data <- neighborhoods %>%
-  left_join(nbhd_ratios, by = c("town_nbhd" = "neighborhood_number")) %>%
-  mutate(diff = abs(model_ratio - 1) - abs(dr_ratio - 1))
+  left_join(nbhd_ratios, by = c("town_nbhd" = "neighborhood_number"))
 
 map_theme <- theme_void(base_size = 9) +
   theme(
@@ -679,36 +679,14 @@ map_dr <- ggplot() +
   ratio_fill_scale() +
   map_theme +
   labs(title = "Desk Review")
-
-diff_limit <- max(abs(map_data$diff), na.rm = TRUE)
-diff_limit <- ceiling(diff_limit * 10) / 10
-
-map_diff <- ggplot() +
-  annotation_map_tile(type = "cartolight", zoomin = 0) +
-  geom_sf(data = map_data, aes(fill = diff), alpha = 0.85, linewidth = 0.1) +
-  scale_fill_gradient2(
-    low      = "#D73027",
-    mid      = "white",
-    high     = "#4575B4",
-    midpoint = 0,
-    limits   = c(-diff_limit, diff_limit),
-    oob      = scales::squish,
-    na.value = "gray90",
-    name     = "Improvement"
-  ) +
-  map_theme +
-  labs(title = "Desk Review Improvement")
 ```
 
 ```{r cap-6}
 cap_fig6 <- glue(
   "Neighborhood Median Assessment Ratios.",
-  "\\newline Green (0.95–1.05) meets the ±5% threshold;",
+  "\\newline Green (0.90–1.10) meets the IAAO standard;",
   " Blue indicates under-assessment;",
-  " Red indicates over-assessment.",
-  " The right panel shows desk review improvement:",
-  " Blue indicates an improved ratio (closer to 1)",
-  " and red indicates it moved further away."
+  " Red indicates over-assessment."
 )
 ```
 
@@ -722,15 +700,11 @@ cap_fig6 <- glue(
 
 grid.newpage()
 print(map_model, vp = viewport(
-  x = 0, y = 0, width = 1 / 3, height = 1,
+  x = 0, y = 0, width = 1 / 2, height = 1,
   just = c("left", "bottom")
 ))
 print(map_dr, vp = viewport(
-  x = 1 / 3, y = 0, width = 1 / 3, height = 1,
-  just = c("left", "bottom")
-))
-print(map_diff, vp = viewport(
-  x = 2 / 3, y = 0, width = 1 / 3, height = 1,
+  x = 1 / 2, y = 0, width = 1 / 2, height = 1,
   just = c("left", "bottom")
 ))
 ```
