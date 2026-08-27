@@ -703,7 +703,7 @@ map_diff <- ggplot() +
 ```{r cap-6}
 cap_fig6 <- glue(
   "Neighborhood Median Assessment Ratios.",
-  "\\newline Green (0.95–1.05) meets the ±5% threshold;",
+  "\\newline Green (0.90–1.10) meets the ±10% threshold;",
   " Blue indicates under-assessment;",
   " Red indicates over-assessment.",
   " The right panel shows desk review improvement:",
