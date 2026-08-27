@@ -422,8 +422,8 @@ n_changed <- function(df) {
 }
 ```
 
-```{r cap-desc-av}
-cap_desc_av <- glue(
+```{r cap-desc-mv}
+cap_desc_mv <- glue(
   "Fair Market Values by Group.",
   "\\newline Model and desk review fair market values for properties",
   " with qualifying arm's-length sales (Sold), properties without",
@@ -431,11 +431,11 @@ cap_desc_av <- glue(
 )
 ```
 
-```{r tbl-desc-av}
-#| tbl-cap: !expr 'cap_desc_av'
+```{r tbl-desc-mv}
+#| tbl-cap: !expr 'cap_desc_mv'
 #| tbl-pos: H
 
-av_table <- tibble(
+mv_table <- tibble(
   Group = c("Sold", "Unsold", "All"),
   `Median Model FMV` = c(
     fmt_dol(median(sales_df$model_FMV, na.rm = TRUE)),
@@ -460,7 +460,7 @@ av_table <- tibble(
 )
 
 knitr::kable(
-  av_table,
+  mv_table,
   format   = "latex",
   escape   = FALSE,
   booktabs = FALSE,
