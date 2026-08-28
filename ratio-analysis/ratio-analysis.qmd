@@ -724,13 +724,18 @@ right_half <- bind_rows(
   }
 )
 
+spacer <- tibble(` ` = rep("", half))
+
 knitr::kable(
-  cbind(nbhd_table_data[1:half, ], right_half),
-  format    = "latex",
-  escape    = FALSE,
-  booktabs  = FALSE,
-  linesep   = "",
-  align     = c("l", "r", "r", "r", "l", "r", "r", "r"),
-  col.names = rep(c("NBHD", "Model Ratio", "DR Ratio", "N Sales"), 2)
+  cbind(nbhd_table_data[1:half, ], spacer, right_half),
+  format = "latex",
+  escape = FALSE,
+  booktabs = FALSE,
+  linesep = "",
+  align = c("l", "r", "r", "r", "l", "l", "r", "r", "r"),
+  col.names = c(
+    "NBHD", "Model Ratio", "DR Ratio", "N Sales", "",
+    "NBHD", "Model Ratio", "DR Ratio", "N Sales"
+  )
 )
 ```
