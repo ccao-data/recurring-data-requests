@@ -285,6 +285,7 @@ This analysis compares ratio statistics from two stages:
 #| tbl-pos: H
 
 display_order <- c("Median Ratio", "PRB", "PRD", "COD", "MKI")
+met_fac <- function(x) factor(x, levels = display_order)
 
 iaao_table <- data.frame(
   Metric = display_order,
@@ -327,7 +328,7 @@ knitr::kable(
 #| fig-width: 6.5
 
 ts_wide <- tibble(
-  Metric = factor(display_order, levels = display_order),
+  Metric = met_fac(display_order),
   Model = c(
     ts$model_ratio, ts$model_prb, ts$model_prd,
     ts$model_cod, ts$model_mki
@@ -349,9 +350,11 @@ ts_long <- ts_wide %>%
     label  = round(Value, pmin(digits, 2))
   )
 
-iaao_bands <- select(metric_meta, Metric = name, xmin = lo, xmax = hi)
+iaao_bands <- select(metric_meta, Metric = name, xmin = lo, xmax = hi) %>%
+  mutate(Metric = met_fac(Metric))
 
-iaao_meta <- select(metric_meta, Metric = name, mid, half_span)
+iaao_meta <- select(metric_meta, Metric = name, mid, half_span) %>%
+  mutate(Metric = met_fac(Metric))
 
 sym_anchors <- ts_long %>%
   left_join(iaao_meta, by = "Metric") %>%
@@ -378,7 +381,8 @@ sym_anchors <- ts_long %>%
 scale_anchors <- bind_rows(
   sym_anchors,
   tibble(Metric = "COD", x = 0)
-)
+) %>%
+  mutate(Metric = met_fac(Metric))
 
 ggplot() +
   geom_blank(data = ts_long, aes(x = Value, y = 1)) +
@@ -667,7 +671,7 @@ map_dr <- make_map("dr_ratio", "Desk Review")
 #| fig-cap: !expr 'caps$fig7'
 #| fig-pos: H
 #| fig-cap-location: top
-#| fig-height: 4.5
+#| fig-height: 3.5
 #| fig-width: 8.5
 #| results: 'hide'
 
@@ -686,6 +690,7 @@ print(map_dr, vp = viewport(
 ```{r tbl-8}
 #| tbl-cap: !expr 'caps$fig8'
 #| tbl-cap-location: top
+#| tbl-pos: H
 
 all_nbhds <- all_parcels %>%
   distinct(neighborhood_number) %>%
@@ -701,18 +706,31 @@ nbhd_table_data <- all_nbhds %>%
     `DR Ratio` = ifelse(
       is.na(dr_ratio), "---", color_ratio_cell(dr_ratio, digits = 3)
     ),
-    `N Sales` = ifelse(is.na(n_sales), 0L, n_sales)
+    `N Sales` = as.character(ifelse(is.na(n_sales), 0L, n_sales))
   ) %>%
   select(`NBHD`, `Model Ratio`, `DR Ratio`, `N Sales`)
 
+n <- nrow(nbhd_table_data)
+half <- ceiling(n / 2)
+pad <- half - (n - half)
+
+right_half <- bind_rows(
+  nbhd_table_data[(half + 1):n, ],
+  if (pad > 0) {
+    tibble(
+      NBHD = rep("", pad), `Model Ratio` = rep("", pad),
+      `DR Ratio` = rep("", pad), `N Sales` = rep("", pad)
+    )
+  }
+)
+
 knitr::kable(
-  nbhd_table_data,
+  cbind(nbhd_table_data[1:half, ], right_half),
   format    = "latex",
   escape    = FALSE,
   booktabs  = FALSE,
   linesep   = "",
-  longtable = TRUE,
-  align     = c("l", "r", "r", "r"),
-  col.names = c("NBHD", "Model Ratio", "DR Ratio", "N Sales")
+  align     = c("l", "r", "r", "r", "l", "r", "r", "r"),
+  col.names = rep(c("NBHD", "Model Ratio", "DR Ratio", "N Sales"), 2)
 )
 ```
