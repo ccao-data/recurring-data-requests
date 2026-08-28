@@ -420,7 +420,10 @@ cap_desc_mv <- glue(
   "Fair Market Values by Group.",
   "\\newline Model and desk review fair market values for properties",
   " with qualifying arm's-length sales (Sold), properties without",
-  " a recorded sale (Unsold), and all residential parcels (All)."
+  " a recorded sale (Unsold), and all residential parcels (All).",
+  " Sold and Unsold do not sum to All because properties removed",
+  " by desk review as outliers are counted in All but neither in",
+  " Sold nor Unsold."
 )
 ```
 
@@ -466,9 +469,7 @@ knitr::kable(
 cap_desc_changes <- glue(
   "Desk Review Changes by Group.",
   "\\newline Number and share of properties whose assessed value was",
-  " changed by desk review. Sold and Unsold do not sum to All because",
-  " properties removed by desk review as outliers are counted in All but",
-  " neither in Sold nor Unsold."
+  " changed by desk review."
 )
 ```
 
