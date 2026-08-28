@@ -18,6 +18,7 @@ model_vals AS (
     SELECT
         assessment_pin.meta_pin AS pin,
         assessment_pin.pred_pin_final_fmv_round AS model_value,
+        -- Outlier sale prices are already removed in pipeline
         assessment_pin.sale_ratio_study_price AS sale_price,
         assessment_pin.sale_ratio_study_date AS sale_date,
         assessment_pin.sale_ratio_study_document_num AS sale_document_number
