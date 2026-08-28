@@ -227,7 +227,7 @@ ratio_fill_scale <- function(name = "Median\nRatio") {
 
 This is a ratio analysis for **`r town_name` Township** for the `r year_val`
 assessment cycle. It includes the 
-**`r format(n_original_sales, big.mark = ",")`** most recent sales for each single-card parcel in the past assessment year (between `r min_sale_date` and `r max_sale_date`). Outliers flagged by the data department are removed. Of these,
+**`r format(n_original_sales, big.mark = ",")`** most recent sale for each single-card parcel in the past assessment year (between `r min_sale_date` and `r max_sale_date`). Outliers flagged by the data department are removed. Of these,
 **`r format(n_excluded_sales, big.mark = ",")`** sales were excluded
 as outliers by Valuations analysts, leaving a **final sample of
 `r format(n_final_sales, big.mark = ",")` sales**. The township
@@ -467,7 +467,7 @@ cap_desc_changes <- glue(
   "Desk Review Changes by Group.",
   "\\newline Number and share of properties whose assessed value was",
   " changed by desk review. Sold and Unsold do not sum to All because",
-  " properties with non-arm's-length sales are counted in All but",
+  " properties removed by desk review as outliers are counted in All but",
   " neither in Sold nor Unsold."
 )
 ```
