@@ -226,10 +226,8 @@ ratio_fill_scale <- function(name = "Median\nRatio") {
 ## Methods
 
 This is a ratio analysis for **`r town_name` Township** for the `r year_val`
-assessment cycle. The original sale sample included the most recent sales of
-**`r format(n_original_sales, big.mark = ",")`** parcels. These sales
-occurred between `r min_sale_date` and `r max_sale_date`, with sale
-prices ranging from `r town_stats$price_range`. Of these,
+assessment cycle. It includes the 
+**`r format(n_original_sales, big.mark = ",")`** most recent sales for each single-card parcel in the past assessment year (between `r min_sale_date` and `r max_sale_date`). Outliers flagged by the data department are removed. Prices range from `r town_stats$price_range`. Of these,
 **`r format(n_excluded_sales, big.mark = ",")`** sales were excluded
 as outliers by Valuations analysts, leaving a **final sample of
 `r format(n_final_sales, big.mark = ",")` sales**. The township
