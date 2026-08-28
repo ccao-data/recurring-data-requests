@@ -53,7 +53,6 @@ dr_vals <- read.xlsx(dr_wb, sheet = 1) %>%
   tibble(.name_repair = "unique") %>%
   select(pin = PIN, desk_review_FMV = Desk.Review.Value)
 
-
 # Athena: pull model values and the residential PIN universe
 
 noctua_options(unload = TRUE)
@@ -235,8 +234,7 @@ prices ranging from `r town_stats$price_range`. Of these,
 **`r format(n_excluded_sales, big.mark = ",")`** sales were excluded
 as outliers by Valuations analysts, leaving a **final sample of
 `r format(n_final_sales, big.mark = ",")` sales**. The township
-contains **`r format(n_total_pins, big.mark = ",")` residential
-parcels**.
+contains **`r format(n_total_pins, big.mark = ",")` residential parcels**. This universe includes Single and Multifamily parcels (up to 6 units) and excludes condo units.
 
 This analysis compares ratio statistics from two stages: 
 (1) **Model** values, which are the output of the model, and 
@@ -258,23 +256,21 @@ cap_fig1 <- glue(
 ts <- town_stats
 
 iaao_table <- data.frame(
-  Metric = c(metric_meta$name, "N Sales"),
-  `IAAO Standard` = c(metric_meta$standard_label, "---"),
+  Metric = metric_meta$name,
+  `IAAO Standard` = metric_meta$standard_label,
   Model = c(
     iaao_color_cell("Median Ratio", ts$model_ratio),
     iaao_color_cell("COD", ts$model_cod),
     iaao_color_cell("PRD", ts$model_prd),
     iaao_color_cell("PRB", ts$model_prb),
-    iaao_color_cell("MKI", ts$model_mki),
-    format(ts$number_of_sales, big.mark = ",")
+    iaao_color_cell("MKI", ts$model_mki)
   ),
   `Desk Review` = c(
     iaao_color_cell("Median Ratio", ts$desk_review_ratio),
     iaao_color_cell("COD", ts$desk_review_cod),
     iaao_color_cell("PRD", ts$desk_review_prd),
     iaao_color_cell("PRB", ts$desk_review_prb),
-    iaao_color_cell("MKI", ts$desk_review_mki),
-    format(ts$number_of_sales, big.mark = ",")
+    iaao_color_cell("MKI", ts$desk_review_mki)
   ),
   check.names = FALSE
 )
