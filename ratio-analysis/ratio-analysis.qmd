@@ -158,7 +158,7 @@ metric_meta <- tibble(
   )
 )
 
-# Color palette that standardizes all color pallettes throughout the text
+# Color palette that standardizes colors throughout the text
 pal <- list(
   # Used for metrics
   pass         = "A8DDB5",
