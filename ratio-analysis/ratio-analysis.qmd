@@ -159,18 +159,20 @@ metric_meta <- tibble(
   )
 )
 
-# Color palette
+# Color palette that standardizes all color pallettes throughout the text
 pal <- list(
+  # Used for metrics
   pass         = "A8DDB5",
   fail         = "FDBB84",
+  iaao_band    = "#A8DDB5",
+  # Model vs desk review charts
   model        = "#A569BD",
   desk_review  = "#2C2C2C",
+  # Neighborhods without sales
   ratio_na     = "EEEEEE",
+  # Gradients for map and nbhd metrics
   ratio_colors = c("4575B4", "74ADD1", "66BD63", "FC8D59", "D73027"),
-  ratio_values = c(0.70, 0.8999, 0.9001, 1.0999, 1.1001, 1.30),
-  ratio_limits = c(0.70, 1.30),
-  ratio_breaks = c(0.80, 0.90, 1.00, 1.10, 1.20),
-  iaao_band    = "#A8DDB5"
+  ratio_values = c(0.70, 0.8999, 0.9001, 1.0999, 1.1001, 1.30)
 )
 
 # Returns TRUE if value falls within the IAAO acceptable range for the given
@@ -196,6 +198,7 @@ ratio_to_hex <- function(ratio) {
   rc <- pal$ratio_colors
   case_when(
     ratio < 0.80 ~ rc[1],
+    # Passing between .9 and 1.1
     ratio < 0.90 ~ rc[2],
     ratio <= 1.10 ~ rc[3],
     ratio <= 1.20 ~ rc[4],
@@ -204,7 +207,6 @@ ratio_to_hex <- function(ratio) {
 }
 
 # Returns a string for a ratio value in the neighborhood table.
-# Uses the same five-color band as ratio_to_hex.
 color_ratio_cell <- function(ratio, digits = 3) {
   value <- round(ratio, digits)
   hex <- ratio_to_hex(ratio)
@@ -220,11 +222,11 @@ ratio_fill_scale <- function(name = "Median\nRatio") {
   scale_fill_gradientn(
     colors   = c(rc[1], rc[2], rc[3], rc[3], rc[4], rc[5]),
     values   = scales::rescale(pal$ratio_values),
-    limits   = pal$ratio_limits,
+    limits   = range(pal$ratio_values),
     oob      = scales::squish,
     na.value = paste0("#", pal$ratio_na),
-    breaks   = pal$ratio_breaks,
-    labels   = sprintf("%.2f", pal$ratio_breaks),
+    breaks   = pal$ratio_values,
+    labels   = c("0.70", "0.90", "0.90", "1.10", "1.10", "1.30"),
     name     = name
   )
 }
@@ -236,12 +238,12 @@ assessment cycle. The initial sale sample had
 statistical outliers flagged by the Data department, and had transaction
 dates ranging from `r min_sale_date` to `r max_sale_date`. From these,
 **`r format(n_excluded_sales, big.mark = ",")`** additional sales were excluded
-as outliers by Valuations analysts, leaving a **final sample of
-`r format(n_final_sales, big.mark = ",")` sales**. The township
+as outliers by Valuations analysts.The township
 contains **`r format(n_total_pins, big.mark = ",")` residential
 parcels**. This universe includes Single and Multifamily parcels (up to
 6 units) and excludes condo units. Prices range from
-`r township_stats$price_range` and are not time-adjusted.
+`r township_stats$price_range` and are not time-adjusted. This leaves a **final sample of
+`r format(n_final_sales, big.mark = ",")` sales**. 
 
 This analysis compares ratio statistics from two stages: 
 (1) **Model** values, which are the output of the model, and 
@@ -696,6 +698,9 @@ nbhd_table_data <- all_nbhds %>%
   ) %>%
   select(`NBHD`, `Model Ratio`, `DR Ratio`, `N Sales`)
 
+# This allows us to separate the table in two halves,
+# ideally keeping it on one final page for larger
+# townships
 n <- nrow(nbhd_table_data)
 half <- ceiling(n / 2)
 pad <- half - (n - half)
