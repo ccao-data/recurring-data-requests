@@ -50,7 +50,6 @@ town_name <- ccao::town_dict %>%
 
 
 # Read desk review inputs
-
 dr_wb <- loadWorkbook(input_file)
 dr_vals <- read.xlsx(dr_wb, sheet = 1) %>%
   tibble(.name_repair = "unique") %>%
@@ -111,8 +110,8 @@ township_stats <- tibble(
     sales_df$desk_review_FMV, sales_df$sale_price
   ),
   price_range = paste(
-    scales::dollar(min(sales_df$sale_price)),
-    scales::dollar(max(sales_df$sale_price)),
+    dollar(min(sales_df$sale_price)),
+    dollar(max(sales_df$sale_price)),
     sep = "–"
   ),
   number_of_sales = nrow(sales_df)
@@ -125,8 +124,8 @@ decile_stats <- sales_df %>%
     desk_review_ratio = median(desk_review_sale_ratio, na.rm = TRUE),
     desk_review_cod = assessr::cod(desk_review_sale_ratio),
     price_range = paste(
-      scales::dollar(min(sale_price)),
-      scales::dollar(max(sale_price)),
+      dollar(min(sale_price)),
+      dollar(max(sale_price)),
       sep = "–"
     ),
     number_of_sales = n(),
@@ -221,9 +220,9 @@ ratio_fill_scale <- function(name = "Median\nRatio") {
   rc <- paste0("#", pal$ratio_colors)
   scale_fill_gradientn(
     colors   = c(rc[1], rc[2], rc[3], rc[3], rc[4], rc[5]),
-    values   = scales::rescale(pal$ratio_values),
+    values   = rescale(pal$ratio_values),
     limits   = range(pal$ratio_values),
-    oob      = scales::squish,
+    oob      = squish,
     na.value = paste0("#", pal$ratio_na),
     breaks   = pal$ratio_values,
     labels   = c("0.70", "0.90", "0.90", "1.10", "1.10", "1.30"),
@@ -280,7 +279,7 @@ iaao_table <- data.frame(
   check.names = FALSE
 )
 
-knitr::kable(
+kable(
   iaao_table,
   format    = "latex",
   escape    = FALSE,
@@ -452,7 +451,7 @@ mv_table <- tibble(
   )
 )
 
-knitr::kable(
+kable(
   mv_table,
   format   = "latex",
   escape   = FALSE,
@@ -487,7 +486,7 @@ changes_table <- tibble(
   )
 )
 
-knitr::kable(
+kable(
   changes_table,
   format   = "latex",
   escape   = FALSE,
@@ -546,9 +545,9 @@ axis_labels <- all_parcels %>%
   arrange(price_decile) %>%
   mutate(label = paste0(
     price_decile, "\n",
-    scales::dollar(min_price, scale_cut = scales::cut_short_scale()),
+    dollar(min_price, scale_cut = cut_short_scale()),
     "–\n",
-    scales::dollar(max_price, scale_cut = scales::cut_short_scale())
+    dollar(max_price, scale_cut = cut_short_scale())
   )) %>%
   (\(df) setNames(df$label, df$price_decile))()
 
@@ -613,9 +612,10 @@ decile_display <- decile_stats %>%
     `DR Ratio`    = round(`DR Ratio`, 3)
   )
 
-knitr::kable(
+kable(
   decile_display,
   format   = "latex",
+  escape   = FALSE,
   booktabs = TRUE,
   linesep  = "",
   align    = c("c", "l", "r", "r", "r")
@@ -717,7 +717,7 @@ right_half <- bind_rows(
 
 spacer <- tibble(` ` = rep("", half))
 
-knitr::kable(
+kable(
   cbind(nbhd_table_data[1:half, ], spacer, right_half),
   format = "latex",
   escape = FALSE,
