@@ -11,7 +11,7 @@ format:
     fontsize: 11pt
     include-in-header: preamble.tex
 params:
-  input_file: "inputs/2026/39-Worth.xlsx"
+  input_file: ""
 execute:
   echo: false
   warning: false
@@ -44,7 +44,7 @@ if (!exists("params")) {
 input_file <- params$input_file
 file_base <- sub("\\.xlsx$", "", basename(input_file))
 town_code <- substr(file_base, 1, 2)
-year_val <- format(Sys.Date(), "%Y")
+year_val <- basename(dirname(input_file))
 
 town_name <- ccao::town_dict %>%
   filter(township_code == town_code) %>%
@@ -257,14 +257,6 @@ ratio_fill_scale <- function(name = "Median\nRatio") {
 }
 ```
 
-```{r write-pdf-path}
-#| include: false
-#
-out_dir <- file.path("output", year_val)
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-pdf_name <- paste0(gsub(" ", "_", town_name), "_ratio_analysis.pdf")
-writeLines(file.path(out_dir, pdf_name), ".pdf-target-path")
-```
 
 This is a ratio analysis for **`r town_name` Township** for the `r year_val`
 assessment cycle. The initial sale sample had 
