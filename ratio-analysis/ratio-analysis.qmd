@@ -38,9 +38,6 @@ library(grid)
 
 set_default_cachedir("rosm.cache")
 
-if (!exists("params")) {
-  params <- rmarkdown::yaml_front_matter("ratio-analysis.qmd")$params
-}
 input_file <- params$input_file
 file_base <- sub("\\.xlsx$", "", basename(input_file))
 town_code <- substr(file_base, 1, 2)
