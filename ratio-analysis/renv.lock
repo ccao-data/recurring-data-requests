@@ -1004,6 +1004,19 @@
       ],
       "Hash": "6b01fc98b1e86c4f705ce9dcfd2f57c7"
     },
+    "processx": {
+      "Package": "processx",
+      "Version": "3.9.0",
+      "Source": "Repository",
+      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/2026-07-10",
+      "Requirements": [
+        "R",
+        "R6",
+        "ps",
+        "utils"
+      ],
+      "Hash": "188d6caf38e81bf15b5e918726a6fd3d"
+    },
     "progress": {
       "Package": "progress",
       "Version": "1.2.3",
@@ -1047,6 +1060,17 @@
       ],
       "Hash": "b6c826e897b46b163c51a3b990113a21"
     },
+    "ps": {
+      "Package": "ps",
+      "Version": "1.9.3",
+      "Source": "Repository",
+      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/2026-07-10",
+      "Requirements": [
+        "R",
+        "utils"
+      ],
+      "Hash": "83e7e486c434e7acc71766dfc20adf2b"
+    },
     "purrr": {
       "Package": "purrr",
       "Version": "1.2.2",
@@ -1061,6 +1085,30 @@
         "vctrs"
       ],
       "Hash": "0a35605539b085a4828ec55ad973fe60"
+    },
+    "quarto": {
+      "Package": "quarto",
+      "Version": "1.5.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "cli",
+        "fs",
+        "htmltools",
+        "jsonlite",
+        "later",
+        "lifecycle",
+        "processx",
+        "rlang",
+        "rmarkdown",
+        "rstudioapi",
+        "tools",
+        "utils",
+        "xfun",
+        "yaml"
+      ],
+      "Hash": "c948476ae43811c74888f0d4534832a3"
     },
     "rappdirs": {
       "Package": "rappdirs",
@@ -1156,6 +1204,13 @@
         "wk"
       ],
       "Hash": "14c0023fdb16dddf88fd43b321dd1948"
+    },
+    "rstudioapi": {
+      "Package": "rstudioapi",
+      "Version": "0.19.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "db86914207e4e0f112b60ebbc3e1793c"
     },
     "s2": {
       "Package": "s2",

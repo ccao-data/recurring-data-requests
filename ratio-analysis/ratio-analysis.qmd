@@ -11,7 +11,7 @@ format:
     fontsize: 11pt
     include-in-header: preamble.tex
 params:
-  input_file: ""
+  input_file: "inputs/2026/39-Worth.xlsx"
 execute:
   echo: false
   warning: false
@@ -38,10 +38,13 @@ library(grid)
 
 set_default_cachedir("rosm.cache")
 
+if (!exists("params")) {
+  params <- rmarkdown::yaml_front_matter("ratio-analysis.qmd")$params
+}
 input_file <- params$input_file
 file_base <- sub("\\.xlsx$", "", basename(input_file))
 town_code <- substr(file_base, 1, 2)
-year_val <- basename(dirname(input_file))
+year_val <- format(Sys.Date(), "%Y")
 
 town_name <- ccao::town_dict %>%
   filter(township_code == town_code) %>%
@@ -56,11 +59,8 @@ dr_vals <- read.xlsx(dr_wb, sheet = 1) %>%
   select(pin = PIN, desk_review_FMV = Desk.Review.Value)
 
 # Athena: pull model values and the residential PIN universe
-
 noctua_options(unload = TRUE)
 conn <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
-
-dr_towns <- town_code
 
 model_vals <- dbGetQuery(
   conn = conn,
@@ -113,16 +113,13 @@ township_stats <- tibble(
     dollar(min(sales_df$sale_price)),
     dollar(max(sales_df$sale_price)),
     sep = "–"
-  ),
-  number_of_sales = nrow(sales_df)
+  )
 )
 
 decile_stats <- sales_df %>%
   summarize(
     model_ratio = median(model_sale_ratio, na.rm = TRUE),
-    model_cod = assessr::cod(model_sale_ratio),
     desk_review_ratio = median(desk_review_sale_ratio, na.rm = TRUE),
-    desk_review_cod = assessr::cod(desk_review_sale_ratio),
     price_range = paste(
       dollar(min(sale_price)),
       dollar(max(sale_price)),
@@ -138,54 +135,78 @@ n_original_sales <- sum(!is.na(all_parcels$sale_price))
 n_final_sales <- nrow(sales_df)
 n_excluded_sales <- n_original_sales - n_final_sales
 n_total_pins <- nrow(all_parcels)
-pct_with_sale <- round(n_final_sales / n_total_pins * 100, 1)
 
 sale_dates <- all_parcels$sale_date[!is.na(all_parcels$sale_date)]
 min_sale_date <- format(min(sale_dates), "%B %d, %Y")
 max_sale_date <- format(max(sale_dates), "%B %d, %Y")
 
 
-# Metric definitions: name, digits, IAAO lo/hi bounds, band mid and half-span
+# Extracts low and high bounds from each assessr *_met function body
+met_bounds <- function(fn) {
+  b <- body(fn)
+  c(low = eval(b[[2]][[3]]), high = eval(b[[3]][[3]]))
+}
+
+# Metric definitions: low/high derived from assessr functions.
+# Mid, half_span, and standard_label computed from those bounds
 metric_meta <- tibble(
   name = c("Median Ratio", "COD", "PRD", "PRB", "MKI"),
   digits = c(3, 1, 4, 4, 4),
-  lo = c(0.90, 5.0, 0.98, -0.05, 0.90),
-  hi = c(1.10, 15.0, 1.03, 0.05, 1.10),
-  mid = c(1.000, 10.0, 1.005, 0.00, 1.000),
-  half_span = c(0.100, 5.0, 0.025, 0.05, 0.100),
-  standard_label = c(
-    "0.90 -- 1.10", "5.0 -- 15.0", "0.98 -- 1.03", "$\\pm$0.05", "0.90 -- 1.10"
+  low = c(
+    met_bounds(med_ratio_met)[["low"]], met_bounds(cod_met)[["low"]],
+    met_bounds(prd_met)[["low"]],       met_bounds(prb_met)[["low"]],
+    met_bounds(mki_met)[["low"]]
+  ),
+  high = c(
+    met_bounds(med_ratio_met)[["high"]], met_bounds(cod_met)[["high"]],
+    met_bounds(prd_met)[["high"]],       met_bounds(prb_met)[["high"]],
+    met_bounds(mki_met)[["high"]]
   )
-)
+) %>%
+  mutate(
+    mid = (low + high) / 2,
+    half_span = (high - low) / 2,
+    standard_label = case_when(
+      name == "PRB" ~ sprintf("$\\pm$%.2f", high),
+      name == "COD" ~ sprintf("%.1f -- %.1f", low, high),
+      TRUE ~ sprintf("%.2f -- %.2f", low, high)
+    )
+  )
 
 # Color palette that standardizes colors throughout the text
 pal <- list(
   # Used for metrics
-  pass         = "A8DDB5",
-  fail         = "FDBB84",
-  iaao_band    = "#A8DDB5",
+  pass = "A8DDB5",
+  fail = "FDBB84",
+  iaao_band = "#A8DDB5",
   # Model vs desk review charts
-  model        = "#A569BD",
-  desk_review  = "#2C2C2C",
+  model = "#A569BD",
+  desk_review = "#2C2C2C",
   # Neighborhods without sales
-  ratio_na     = "EEEEEE",
+  ratio_na = "EEEEEE",
   # Gradients for map and nbhd metrics
   ratio_colors = c("4575B4", "74ADD1", "66BD63", "FC8D59", "D73027"),
-  ratio_values = c(0.70, 0.8999, 0.9001, 1.0999, 1.1001, 1.30)
+  ratio_values = local({
+    low <- met_bounds(med_ratio_met)[["low"]]
+    high <- met_bounds(med_ratio_met)[["high"]]
+    # EPS provides a small offset which creates
+    # an unseen gradient.
+    eps <- 0.0001
+    c(low - 0.20, low - eps, low + eps, high - eps, high + eps, high + 0.20)
+  })
 )
 
-# Returns TRUE if value falls within the IAAO acceptable range for the given
-# metric, FALSE if it doesn't.
-iaao_check <- function(metric, value) {
-  metric_row <- metric_meta[metric_meta$name == metric, ]
-  value >= metric_row$lo & value <= metric_row$hi
-}
-
-# Returns a  string that colors the cell green (pass) or orange
-# (fail) based on whether value meets the IAAO standard for the given metric.
+# Colors the cell green (pass) or orange (fail) based on whether
+# value meets the IAAO standard for the given metric.
 iaao_color_cell <- function(metric, value) {
   metric_row <- metric_meta[metric_meta$name == metric, ]
-  passes <- iaao_check(metric, value)
+  passes <- switch(metric,
+    `Median Ratio` = med_ratio_met(value),
+    COD = cod_met(value),
+    PRD = prd_met(value),
+    PRB = prb_met(value),
+    MKI = mki_met(value)
+  )
   value <- round(value, metric_row$digits)
   hex <- if (passes) pal$pass else pal$fail
   paste0("\\cellcolor[HTML]{", hex, "} ", value)
@@ -197,8 +218,8 @@ ratio_to_hex <- function(ratio) {
   rc <- pal$ratio_colors
   case_when(
     ratio < 0.80 ~ rc[1],
-    # Passing between .9 and 1.1
     ratio < 0.90 ~ rc[2],
+    # Passing between .9 and 1.1
     ratio <= 1.10 ~ rc[3],
     ratio <= 1.20 ~ rc[4],
     TRUE ~ rc[5]
@@ -213,22 +234,36 @@ color_ratio_cell <- function(ratio, digits = 3) {
 }
 
 # Shared ggplot fill scale for the ratio map panels. rc[3] is repeated so the
-# green "within standard" band (0.90–1.10) gets a flat color rather than a
-# gradient. The `squish` maps values outside ratio_limits to the nearest color
-# instead of showing them as NA.
+# green "within standard" band gets a flat color rather than a gradient. The
+# `squish` maps values outside ratio_limits to the nearest color instead of NA.
 ratio_fill_scale <- function(name = "Median\nRatio") {
   rc <- paste0("#", pal$ratio_colors)
+  low_lbl <- sprintf("%.2f", met_bounds(med_ratio_met)[["low"]])
+  high_lbl <- sprintf("%.2f", met_bounds(med_ratio_met)[["high"]])
   scale_fill_gradientn(
-    colors   = c(rc[1], rc[2], rc[3], rc[3], rc[4], rc[5]),
-    values   = rescale(pal$ratio_values),
-    limits   = range(pal$ratio_values),
-    oob      = squish,
+    colors = c(rc[1], rc[2], rc[3], rc[3], rc[4], rc[5]),
+    values = rescale(pal$ratio_values),
+    limits = range(pal$ratio_values),
+    oob = squish,
     na.value = paste0("#", pal$ratio_na),
-    breaks   = pal$ratio_values,
-    labels   = c("0.70", "0.90", "0.90", "1.10", "1.10", "1.30"),
-    name     = name
+    breaks = pal$ratio_values,
+    labels = c(
+      sprintf("%.2f", pal$ratio_values[1]),
+      low_lbl, low_lbl, high_lbl, high_lbl,
+      sprintf("%.2f", pal$ratio_values[6])
+    ),
+    name = name
   )
 }
+```
+
+```{r write-pdf-path}
+#| include: false
+#
+out_dir <- file.path("output", year_val)
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+pdf_name <- paste0(gsub(" ", "_", town_name), "_ratio_analysis.pdf")
+writeLines(file.path(out_dir, pdf_name), ".pdf-target-path")
 ```
 
 This is a ratio analysis for **`r town_name` Township** for the `r year_val`
@@ -237,12 +272,12 @@ assessment cycle. The initial sale sample had
 statistical outliers flagged by the Data department, and had transaction
 dates ranging from `r min_sale_date` to `r max_sale_date`. From these,
 **`r format(n_excluded_sales, big.mark = ",")`** additional sales were excluded
-as outliers by Valuations analysts.The township
-contains **`r format(n_total_pins, big.mark = ",")` residential
-parcels**. This universe includes Single and Multifamily parcels (up to
+as outliers by Valuations analysts.This leaves a **final sample of
+`r format(n_final_sales, big.mark = ",")` sales**. This universe includes Single and Multifamily parcels (up to
 6 units) and excludes condo units. Prices range from
-`r township_stats$price_range` and are not time-adjusted. This leaves a **final sample of
-`r format(n_final_sales, big.mark = ",")` sales**. 
+`r township_stats$price_range` and are not time-adjusted. The township
+contains **`r format(n_total_pins, big.mark = ",")` residential
+parcels**. 
 
 This analysis compares ratio statistics from two stages: 
 (1) **Model** values, which are the output of the model, and 
@@ -254,6 +289,8 @@ This analysis compares ratio statistics from two stages:
 #|   standard; orange shading does not.
 #| tbl-pos: H
 
+# Outputs were sometimes being placed in alphabetical
+# vs stated order so this just standardizes it.
 display_order <- c("Median Ratio", "PRB", "PRD", "COD", "MKI")
 met_fac <- function(x) factor(x, levels = display_order)
 
@@ -324,7 +361,7 @@ township_stats_long <- township_stats_wide %>%
     label  = round(Value, pmin(digits, 2))
   )
 
-iaao_bands <- select(metric_meta, Metric = name, xmin = lo, xmax = hi) %>%
+iaao_bands <- select(metric_meta, Metric = name, xmin = low, xmax = high) %>%
   mutate(Metric = met_fac(Metric))
 
 iaao_meta <- select(metric_meta, Metric = name, mid, half_span) %>%
@@ -340,12 +377,12 @@ sym_anchors <- township_stats_long %>%
   ) %>%
   mutate(
     half_ax = pmax(half_span, max_dev) * 1.15,
-    x_lo    = mid - half_ax,
-    x_hi    = mid + half_ax
+    x_low = mid - half_ax,
+    x_high = mid + half_ax
   ) %>%
-  select(Metric, x_lo, x_hi) %>%
+  select(Metric, x_low, x_high) %>%
   pivot_longer(
-    c(x_lo, x_hi),
+    c(x_low, x_high),
     names_to = "side", values_to = "x"
   ) %>%
   select(Metric, x)

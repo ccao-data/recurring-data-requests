@@ -51,7 +51,7 @@ most_recent_pin AS (
             CAST(YEAR(CURRENT_DATE) - 1 AS VARCHAR),
             CAST(YEAR(CURRENT_DATE) AS VARCHAR)
         )
-        AND uni.township_code IN ({dr_towns*}) -- noqa
+        AND uni.township_code IN ({town_code*}) -- noqa
 )
 
 SELECT
