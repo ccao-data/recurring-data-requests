@@ -151,7 +151,7 @@ met_bounds <- function(fn) {
 # Mid, half_span, and standard_label computed from those bounds
 metric_meta <- tibble(
   name = c("Median Ratio", "COD", "PRD", "PRB", "MKI"),
-  digits = c(3, 1, 4, 4, 4),
+  digits = c(2, 2, 2, 2, 2),
   low = c(
     met_bounds(med_ratio_met)[["low"]], met_bounds(cod_met)[["low"]],
     met_bounds(prd_met)[["low"]],       met_bounds(prb_met)[["low"]],
@@ -227,7 +227,7 @@ ratio_to_hex <- function(ratio) {
 }
 
 # Returns a string for a ratio value in the neighborhood table.
-color_ratio_cell <- function(ratio, digits = 3) {
+color_ratio_cell <- function(ratio, digits = 2) {
   value <- round(ratio, digits)
   hex <- ratio_to_hex(ratio)
   paste0("\\cellcolor[HTML]{", hex, "} ", value)
@@ -357,8 +357,7 @@ township_stats_long <- township_stats_wide %>%
   ) %>%
   mutate(
     Stage  = factor(Stage, levels = c("Model", "Desk Review")),
-    digits = metric_meta$digits[match(Metric, metric_meta$name)],
-    label  = round(Value, pmin(digits, 2))
+    label  = round(Value, 2)
   )
 
 iaao_bands <- select(metric_meta, Metric = name, xmin = low, xmax = high) %>%
@@ -602,19 +601,28 @@ ggplot(
   )
 ) +
   annotate("rect",
-    xmin = -Inf, xmax = Inf, ymin = 0.9, ymax = 1.1,
+    xmin = -Inf, xmax = Inf,
+    ymin = met_bounds(med_ratio_met)[["low"]],
+    ymax = met_bounds(med_ratio_met)[["high"]],
     fill = pal$iaao_band, alpha = 0.12
   ) +
   geom_hline(yintercept = 1, color = "darkgreen", linewidth = 1) +
   geom_hline(
-    yintercept = 0.9, linetype = "dotted", color = "black", linewidth = 0.8
+    yintercept = met_bounds(med_ratio_met)[["low"]],
+    linetype = "dotted", color = "black", linewidth = 0.8
   ) +
   geom_hline(
-    yintercept = 1.1, linetype = "dotted", color = "black", linewidth = 0.8
+    yintercept = met_bounds(med_ratio_met)[["high"]],
+    linetype = "dotted", color = "black", linewidth = 0.8
   ) +
   annotate("text",
-    x = 1, y = 1.11,
-    label = "IAAO Range (0.9–1.1)", hjust = 0, vjust = -0.4, size = 3.5
+    x = 1, y = met_bounds(med_ratio_met)[["high"]] + 0.01,
+    label = sprintf(
+      "IAAO Range (%.2f–%.2f)",
+      met_bounds(med_ratio_met)[["low"]],
+      met_bounds(med_ratio_met)[["high"]]
+    ),
+    hjust = 0, vjust = -0.4, size = 3.5
   ) +
   geom_line(linewidth = 1) +
   geom_label(show.legend = FALSE, size = 3) +
@@ -726,10 +734,10 @@ nbhd_table_data <- all_nbhds %>%
   mutate(
     `NBHD` = neighborhood_number,
     `Model Ratio` = ifelse(
-      is.na(model_ratio), "---", color_ratio_cell(model_ratio, digits = 3)
+      is.na(model_ratio), "---", color_ratio_cell(model_ratio)
     ),
     `DR Ratio` = ifelse(
-      is.na(dr_ratio), "---", color_ratio_cell(dr_ratio, digits = 3)
+      is.na(dr_ratio), "---", color_ratio_cell(dr_ratio)
     ),
     `N Sales` = as.character(ifelse(is.na(n_sales), 0L, n_sales))
   ) %>%
