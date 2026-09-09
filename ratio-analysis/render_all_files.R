@@ -10,7 +10,8 @@ input_files <- list.files(input_path, pattern = "\\.xlsx$", full.names = TRUE)
 dir.create(output_path, recursive = TRUE, showWarnings = FALSE)
 
 for (f in input_files) {
-  town_name <- sub("^[0-9]+-", "", sub("\\.xlsx$", "", basename(f)))
+  town_code <- substr(basename(f), 1, 2))
+  town_name <- tolower(town_convert(town_code))
   out_name <- paste0(town_name, "_ratio_analysis.pdf")
   message("Rendering: ", f)
   quarto_render(
