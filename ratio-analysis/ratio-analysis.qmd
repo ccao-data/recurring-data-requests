@@ -35,6 +35,7 @@ library(knitr)
 library(glue)
 library(rosm)
 library(grid)
+library(prettymapr)
 
 set_default_cachedir("rosm.cache")
 
