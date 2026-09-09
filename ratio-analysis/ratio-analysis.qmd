@@ -133,7 +133,9 @@ n_final_sales <- nrow(sales_df)
 n_excluded_sales <- n_original_sales - n_final_sales
 n_total_pins <- nrow(all_parcels)
 
-sale_dates <- all_parcels$sale_date[!is.na(all_parcels$sale_date)]
+sale_dates <- all_parcels %>%
+  filter(!is.na(sale_date)) %>%
+  pull(sale_date)
 min_sale_date <- format(min(sale_dates), "%B %d, %Y")
 max_sale_date <- format(max(sale_dates), "%B %d, %Y")
 
