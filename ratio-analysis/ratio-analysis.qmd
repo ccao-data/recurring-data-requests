@@ -1,0 +1,768 @@
+---
+title: >-
+  Ratio Analysis for `r paste0(tools::toTitleCase(gsub('-', ' ',
+  sub('^[0-9]+-', '', sub('\\.xlsx$', '', basename(params$input_file))))),
+  ', ', basename(dirname(params$input_file)))`
+subtitle: "Prepared `r format(Sys.Date(), '%B %d, %Y')`"
+format:
+  pdf:
+    documentclass: article
+    geometry: margin=1in
+    fontsize: 11pt
+    include-in-header: preamble.tex
+params:
+  input_file: ""
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(DBI)
+library(noctua)
+library(openxlsx)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(ggspatial)
+library(sf)
+library(scales)
+library(ccao)
+library(assessr)
+library(readr)
+library(knitr)
+library(glue)
+library(rosm)
+library(grid)
+library(prettymapr)
+
+set_default_cachedir("rosm.cache")
+
+input_file <- params$input_file
+file_base <- sub("\\.xlsx$", "", basename(input_file))
+town_code <- substr(file_base, 1, 2)
+
+town_name <- ccao::town_dict %>%
+  filter(township_code == town_code) %>%
+  pull(township_name) %>%
+  first()
+
+
+# Read desk review inputs
+dr_wb <- loadWorkbook(input_file)
+dr_vals <- read.xlsx(dr_wb, sheet = 1) %>%
+  tibble(.name_repair = "unique") %>%
+  select(pin = PIN, desk_review_FMV = Desk.Review.Value)
+
+# Athena: pull model values and the residential PIN universe
+noctua_options(unload = TRUE)
+conn <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
+
+model_vals <- dbGetQuery(
+  conn = conn,
+  glue_sql(
+    read_file("ratio-analysis.sql"),
+    .con = conn
+  )
+)
+
+dbDisconnect(conn)
+
+# Join and compute ratios / price deciles
+all_parcels <- dr_vals %>%
+  inner_join(select(model_vals, pin), by = "pin") %>%
+  full_join(model_vals, by = "pin") %>%
+  rename(model_FMV = model_value) %>%
+  filter(township_name == town_name) %>%
+  mutate(
+    sale_date = as.Date(sale_date),
+    sale_excluded = if_else(is.na(sale_price), NA, is.na(desk_review_FMV)),
+    price_decile = ntile(
+      if_else(sale_excluded %in% TRUE, NA_real_, sale_price), 10
+    ),
+    model_sale_ratio = model_FMV / sale_price,
+    desk_review_sale_ratio = desk_review_FMV / sale_price
+  )
+
+# Compute statistics
+sales_df <- all_parcels %>%
+  filter(!is.na(sale_price), !sale_excluded %in% TRUE)
+
+township_stats <- tibble(
+  model_ratio = median(sales_df$model_sale_ratio, na.rm = TRUE),
+  model_cod = assessr::cod(sales_df$model_sale_ratio),
+  model_prd = assessr::prd(sales_df$model_FMV, sales_df$sale_price),
+  model_prb = assessr::prb(sales_df$model_FMV, sales_df$sale_price),
+  model_mki = assessr::mki(sales_df$model_FMV, sales_df$sale_price),
+  desk_review_ratio = median(sales_df$desk_review_sale_ratio, na.rm = TRUE),
+  desk_review_cod = assessr::cod(sales_df$desk_review_sale_ratio),
+  desk_review_prd = assessr::prd(
+    sales_df$desk_review_FMV, sales_df$sale_price
+  ),
+  desk_review_prb = assessr::prb(
+    sales_df$desk_review_FMV, sales_df$sale_price
+  ),
+  desk_review_mki = assessr::mki(
+    sales_df$desk_review_FMV, sales_df$sale_price
+  ),
+  price_range = paste(
+    dollar(min(sales_df$sale_price)),
+    dollar(max(sales_df$sale_price)),
+    sep = "–"
+  )
+)
+
+decile_stats <- sales_df %>%
+  summarize(
+    model_ratio = median(model_sale_ratio, na.rm = TRUE),
+    desk_review_ratio = median(desk_review_sale_ratio, na.rm = TRUE),
+    price_range = paste(
+      dollar(min(sale_price)),
+      dollar(max(sale_price)),
+      sep = "–"
+    ),
+    number_of_sales = n(),
+    .by = price_decile
+  ) %>%
+  arrange(price_decile)
+
+# Methods summary values
+n_original_sales <- sum(!is.na(all_parcels$sale_price))
+n_final_sales <- nrow(sales_df)
+n_excluded_sales <- n_original_sales - n_final_sales
+n_total_pins <- nrow(all_parcels)
+
+sale_dates <- all_parcels %>%
+  filter(!is.na(sale_date)) %>%
+  pull(sale_date)
+min_sale_date <- format(min(sale_dates), "%B %d, %Y")
+max_sale_date <- format(max(sale_dates), "%B %d, %Y")
+
+
+# Extracts low and high bounds from each assessr *_met function body
+met_bounds <- function(fn) {
+  b <- body(fn)
+  c(low = eval(b[[2]][[3]]), high = eval(b[[3]][[3]]))
+}
+
+# Metric definitions: low/high derived from assessr functions.
+# Mid, half_span, and standard_label computed from those bounds
+metric_meta <- tibble(
+  name = c("Median Ratio", "COD", "PRD", "PRB", "MKI"),
+  digits = c(2, 2, 2, 2, 2),
+  low = c(
+    met_bounds(med_ratio_met)[["low"]], met_bounds(cod_met)[["low"]],
+    met_bounds(prd_met)[["low"]],       met_bounds(prb_met)[["low"]],
+    met_bounds(mki_met)[["low"]]
+  ),
+  high = c(
+    met_bounds(med_ratio_met)[["high"]], met_bounds(cod_met)[["high"]],
+    met_bounds(prd_met)[["high"]],       met_bounds(prb_met)[["high"]],
+    met_bounds(mki_met)[["high"]]
+  )
+) %>%
+  mutate(
+    mid = (low + high) / 2,
+    half_span = (high - low) / 2,
+    standard_label = case_when(
+      name == "PRB" ~ sprintf("$\\pm$%.2f", high),
+      name == "COD" ~ sprintf("%.1f -- %.1f", low, high),
+      TRUE ~ sprintf("%.2f -- %.2f", low, high)
+    )
+  )
+
+# Color palette that standardizes colors throughout the text
+pal <- list(
+  # Used for metrics
+  pass = "A8DDB5",
+  fail = "FDBB84",
+  iaao_band = "#A8DDB5",
+  # Model vs desk review charts
+  model = "#A569BD",
+  desk_review = "#2C2C2C",
+  # Neighborhods without sales
+  ratio_na = "EEEEEE",
+  # Gradients for map and nbhd metrics
+  ratio_colors = c("4575B4", "74ADD1", "66BD63", "FC8D59", "D73027"),
+  ratio_values = local({
+    low <- met_bounds(med_ratio_met)[["low"]]
+    high <- met_bounds(med_ratio_met)[["high"]]
+    # EPS provides a small offset which creates
+    # an unseen gradient.
+    eps <- 0.0001
+    c(low - 0.20, low - eps, low + eps, high - eps, high + eps, high + 0.20)
+  })
+)
+
+# Colors the cell green (pass) or orange (fail) based on whether
+# value meets the IAAO standard for the given metric.
+iaao_color_cell <- function(metric, value) {
+  metric_row <- metric_meta[metric_meta$name == metric, ]
+  passes <- switch(metric,
+    `Median Ratio` = med_ratio_met(value),
+    COD = cod_met(value),
+    PRD = prd_met(value),
+    PRB = prb_met(value),
+    MKI = mki_met(value)
+  )
+  value <- round(value, metric_row$digits)
+  hex <- if (passes) pal$pass else pal$fail
+  paste0("\\cellcolor[HTML]{", hex, "} ", value)
+}
+
+# Maps a sale ratio to one of five hex color codes representing assessment
+# quality bands: dark blue, light blue, green, orange, or red.
+ratio_to_hex <- function(ratio) {
+  rc <- pal$ratio_colors
+  case_when(
+    ratio < 0.80 ~ rc[1],
+    ratio < 0.90 ~ rc[2],
+    # Passing between .9 and 1.1
+    ratio <= 1.10 ~ rc[3],
+    ratio <= 1.20 ~ rc[4],
+    TRUE ~ rc[5]
+  )
+}
+
+# Returns a string for a ratio value in the neighborhood table.
+color_ratio_cell <- function(ratio, digits = 2) {
+  value <- round(ratio, digits)
+  hex <- ratio_to_hex(ratio)
+  paste0("\\cellcolor[HTML]{", hex, "} ", value)
+}
+
+# Shared ggplot fill scale for the ratio map panels. rc[3] is repeated so the
+# green "within standard" band gets a flat color rather than a gradient. The
+# `squish` maps values outside ratio_limits to the nearest color instead of NA.
+ratio_fill_scale <- function(name = "Median\nRatio") {
+  rc <- paste0("#", pal$ratio_colors)
+  low_lbl <- sprintf("%.2f", met_bounds(med_ratio_met)[["low"]])
+  high_lbl <- sprintf("%.2f", met_bounds(med_ratio_met)[["high"]])
+  scale_fill_gradientn(
+    colors = c(rc[1], rc[2], rc[3], rc[3], rc[4], rc[5]),
+    values = rescale(pal$ratio_values),
+    limits = range(pal$ratio_values),
+    oob = squish,
+    na.value = paste0("#", pal$ratio_na),
+    breaks = pal$ratio_values,
+    labels = c(
+      sprintf("%.2f", pal$ratio_values[1]),
+      low_lbl, low_lbl, high_lbl, high_lbl,
+      sprintf("%.2f", pal$ratio_values[6])
+    ),
+    name = name
+  )
+}
+```
+
+
+This is a ratio analysis for **`r town_name` Township** for the `r format(Sys.Date(), "%Y")`
+assessment cycle. The initial sale sample had 
+**`r format(n_original_sales, big.mark = ",")`** sales: this excludes
+statistical outliers flagged by the Data department, and had transaction
+dates ranging from `r min_sale_date` to `r max_sale_date`. From these,
+**`r format(n_excluded_sales, big.mark = ",")`** additional sales were excluded
+as outliers by Valuations analysts.This leaves a **final sample of
+`r format(n_final_sales, big.mark = ",")` sales**. This universe includes Single and Multifamily parcels (up to
+6 units) and excludes condo units. Prices range from
+`r township_stats$price_range` and are not time-adjusted. The township
+contains **`r format(n_total_pins, big.mark = ",")` residential
+parcels**. 
+
+This analysis compares ratio statistics from two stages: 
+(1) **Model** values, which are the output of the model, and 
+(2) **Desk Review** values, which reflect manual adjustments by staff.
+
+```{r tbl-1}
+#| tbl-cap: >-
+#|   Town-Level IAAO Statistics.\newline Green shading meets IAAO
+#|   standard; orange shading does not.
+#| tbl-pos: H
+
+# Outputs were sometimes being placed in alphabetical
+# vs stated order so this just standardizes it.
+display_order <- c("Median Ratio", "PRB", "PRD", "COD", "MKI")
+met_fac <- function(x) factor(x, levels = display_order)
+
+iaao_table <- data.frame(
+  Metric = display_order,
+  `IAAO Standard` = metric_meta$standard_label[
+    match(display_order, metric_meta$name)
+  ],
+  Model = c(
+    iaao_color_cell("Median Ratio", township_stats$model_ratio),
+    iaao_color_cell("PRB", township_stats$model_prb),
+    iaao_color_cell("PRD", township_stats$model_prd),
+    iaao_color_cell("COD", township_stats$model_cod),
+    iaao_color_cell("MKI", township_stats$model_mki)
+  ),
+  `Desk Review` = c(
+    iaao_color_cell("Median Ratio", township_stats$desk_review_ratio),
+    iaao_color_cell("PRB", township_stats$desk_review_prb),
+    iaao_color_cell("PRD", township_stats$desk_review_prd),
+    iaao_color_cell("COD", township_stats$desk_review_cod),
+    iaao_color_cell("MKI", township_stats$desk_review_mki)
+  ),
+  check.names = FALSE
+)
+
+kable(
+  iaao_table,
+  format    = "latex",
+  escape    = FALSE,
+  booktabs  = FALSE,
+  linesep   = "",
+  col.names = c("Metric", "IAAO Standard", "Model", "Desk Review"),
+  align     = c("l", "c", "r", "r")
+)
+```
+
+```{r fig-2}
+#| fig-cap: >-
+#|   IAAO Metrics: Model vs. Desk Review.\newline Green shaded band
+#|   shows the IAAO acceptable range for each metric.
+#| fig-pos: H
+#| fig-cap-location: top
+#| fig-height: 3.5
+#| fig-width: 6.5
+
+township_stats_wide <- tibble(
+  Metric = met_fac(display_order),
+  Model = c(
+    township_stats$model_ratio, township_stats$model_prb,
+    township_stats$model_prd, township_stats$model_cod,
+    township_stats$model_mki
+  ),
+  `Desk Review` = c(
+    township_stats$desk_review_ratio, township_stats$desk_review_prb,
+    township_stats$desk_review_prd, township_stats$desk_review_cod,
+    township_stats$desk_review_mki
+  )
+)
+
+township_stats_long <- township_stats_wide %>%
+  pivot_longer(
+    c(Model, `Desk Review`),
+    names_to = "Stage", values_to = "Value"
+  ) %>%
+  mutate(
+    Stage  = factor(Stage, levels = c("Model", "Desk Review")),
+    label  = round(Value, 2)
+  )
+
+iaao_bands <- select(metric_meta, Metric = name, xmin = low, xmax = high) %>%
+  mutate(Metric = met_fac(Metric))
+
+iaao_meta <- select(metric_meta, Metric = name, mid, half_span) %>%
+  mutate(Metric = met_fac(Metric))
+
+sym_anchors <- township_stats_long %>%
+  left_join(iaao_meta, by = "Metric") %>%
+  mutate(dev = abs(Value - mid)) %>%
+  group_by(Metric, mid, half_span) %>%
+  summarize(
+    max_dev = max(dev, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    half_ax = pmax(half_span, max_dev) * 1.15,
+    x_low = mid - half_ax,
+    x_high = mid + half_ax
+  ) %>%
+  select(Metric, x_low, x_high) %>%
+  pivot_longer(
+    c(x_low, x_high),
+    names_to = "side", values_to = "x"
+  ) %>%
+  select(Metric, x)
+
+scale_anchors <- bind_rows(
+  sym_anchors,
+  tibble(Metric = "COD", x = 0)
+) %>%
+  mutate(Metric = met_fac(Metric))
+
+ggplot() +
+  geom_blank(data = township_stats_long, aes(x = Value, y = 1)) +
+  geom_point(
+    data  = scale_anchors,
+    aes(x = x, y = 1),
+    size  = 0,
+    alpha = 0
+  ) +
+  geom_rect(
+    data = iaao_bands,
+    aes(xmin = xmin, xmax = xmax, ymin = 0.1, ymax = 1.9),
+    fill = pal$iaao_band, alpha = 0.45
+  ) +
+  geom_segment(
+    data = township_stats_wide,
+    aes(x = Model, xend = `Desk Review`, y = 1, yend = 1),
+    color = "gray40", linewidth = 2, lineend = "round"
+  ) +
+  geom_point(
+    data  = township_stats_long,
+    aes(x = Value, y = 1, color = Stage, shape = Stage),
+    size  = 5
+  ) +
+  geom_text(
+    data = township_stats_long,
+    aes(x = Value, y = 1, label = label, color = Stage),
+    vjust = -1.6, size = 3, fontface = "bold"
+  ) +
+  facet_wrap(~Metric, scales = "free_x", ncol = 1, strip.position = "left") +
+  scale_color_manual(
+    values = c("Model" = pal$model, "Desk Review" = pal$desk_review)
+  ) +
+  scale_shape_manual(values = c("Model" = 16, "Desk Review" = 17)) +
+  scale_y_continuous(limits = c(0, 2)) +
+  coord_cartesian(clip = "off") +
+  theme_minimal(base_size = 11) +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    strip.text.y.left = element_text(
+      face = "bold", size = 11, angle = 0, hjust = 1
+    ),
+    strip.placement = "outside",
+    legend.position = "bottom",
+    plot.margin = margin(t = 20, r = 5, b = 5, l = 5, unit = "pt")
+  ) +
+  labs(x = NULL, y = NULL, color = "Stage", shape = "Stage")
+```
+
+```{r desc-helpers}
+no_sale <- all_parcels %>% filter(is.na(sale_price))
+
+fmt_n <- function(x) format(x, big.mark = ",")
+fmt_dol <- function(x) paste0("\\$", format(round(x), big.mark = ","))
+fmt_pct <- function(changed, total) {
+  paste0(round(changed / total * 100, 1), "\\%")
+}
+n_changed <- function(df) {
+  sum(!is.na(df$model_FMV) & !is.na(df$desk_review_FMV) &
+    df$model_FMV != df$desk_review_FMV) # nolint: indentation_linter.
+}
+```
+
+{{< pagebreak >}}
+
+```{r tbl-3}
+#| tbl-cap: >-
+#|   Fair Market Values by Group.\newline Model and desk review fair
+#|   market values for properties with qualifying arm's-length sales
+#|   (Sold), properties without a recorded sale (Unsold), and all
+#|   residential parcels (All). Sold and Unsold do not sum to All
+#|   because properties removed by desk review as outliers are counted
+#|   in All but neither in Sold nor Unsold.
+#| tbl-pos: H
+
+groups <- list(Sold = sales_df, Unsold = no_sale, All = all_parcels)
+
+mv_table <- tibble(
+  Group = names(groups),
+  `Median Model FMV` = sapply(
+    groups, \(df) fmt_dol(median(df$model_FMV, na.rm = TRUE))
+  ),
+  `Median DR FMV` = sapply(
+    groups, \(df) fmt_dol(median(df$desk_review_FMV, na.rm = TRUE))
+  ),
+  `Mean Model FMV` = sapply(
+    groups, \(df) fmt_dol(mean(df$model_FMV, na.rm = TRUE))
+  ),
+  `Mean DR FMV` = sapply(
+    groups, \(df) fmt_dol(mean(df$desk_review_FMV, na.rm = TRUE))
+  )
+)
+
+kable(
+  mv_table,
+  format   = "latex",
+  escape   = FALSE,
+  booktabs = FALSE,
+  linesep  = "",
+  align    = c("l", "r", "r", "r", "r")
+)
+```
+
+```{r tbl-4}
+#| tbl-cap: >-
+#|   Desk Review Changes by Group.\newline Number and share of
+#|   properties whose value was changed by desk review.
+#| tbl-pos: H
+
+changes_table <- tibble(
+  Group = c("Sold", "Unsold", "All"),
+  N = c(
+    fmt_n(nrow(sales_df)),
+    fmt_n(nrow(no_sale)),
+    fmt_n(nrow(all_parcels))
+  ),
+  `N DR Changes` = c(
+    fmt_n(n_changed(sales_df)),
+    fmt_n(n_changed(no_sale)),
+    fmt_n(n_changed(all_parcels))
+  ),
+  `\\% DR Changes` = c(
+    fmt_pct(n_changed(sales_df), nrow(sales_df)),
+    fmt_pct(n_changed(no_sale), nrow(no_sale)),
+    fmt_pct(n_changed(all_parcels), nrow(all_parcels))
+  )
+)
+
+kable(
+  changes_table,
+  format   = "latex",
+  escape   = FALSE,
+  booktabs = FALSE,
+  linesep  = "",
+  align    = c("l", "r", "r", "r")
+)
+```
+
+```{r nbhd-ratios-prep}
+nbhd_ratios <- all_parcels %>%
+  filter(!is.na(sale_price), !sale_excluded %in% TRUE) %>%
+  mutate(neighborhood_number = gsub("-", "", neighborhood_number)) %>%
+  summarize(
+    model_ratio = median(model_sale_ratio, na.rm = TRUE),
+    dr_ratio    = median(desk_review_sale_ratio, na.rm = TRUE),
+    n_sales     = n(),
+    .by         = neighborhood_number
+  )
+```
+
+{{< pagebreak >}}
+
+```{r fig-5}
+#| fig-cap: >-
+#|   Sale Price Ratio Curve.\newline Each labeled point is the median
+#|   ratio within that sale price decile. Dotted lines show the IAAO
+#|   acceptable range (0.9–1.1).
+#| fig-pos: H
+#| fig-cap-location: top
+#| fig-height: 3.5
+#| fig-width: 7
+
+decile_long <- decile_stats %>%
+  select(price_decile, model_ratio, desk_review_ratio) %>%
+  pivot_longer(
+    cols      = c(model_ratio, desk_review_ratio),
+    names_to  = "Stage",
+    values_to = "Sale Ratio"
+  ) %>%
+  mutate(
+    Stage = case_when(
+      Stage == "model_ratio" ~ "Model",
+      Stage == "desk_review_ratio" ~ "Desk Review"
+    ),
+    Stage = factor(Stage, levels = c("Model", "Desk Review"))
+  )
+
+axis_labels <- all_parcels %>%
+  filter(!is.na(sale_price), !sale_excluded %in% TRUE, !is.na(price_decile)) %>%
+  summarize(
+    min_price = min(sale_price),
+    max_price = max(sale_price),
+    .by       = price_decile
+  ) %>%
+  arrange(price_decile) %>%
+  mutate(label = paste0(
+    price_decile, "\n",
+    dollar(min_price, scale_cut = cut_short_scale()),
+    "–\n",
+    dollar(max_price, scale_cut = cut_short_scale())
+  )) %>%
+  (\(df) setNames(df$label, df$price_decile))()
+
+y_min <- min(decile_long$`Sale Ratio`, 0.7, na.rm = TRUE)
+y_max <- max(decile_long$`Sale Ratio`, 1.3, na.rm = TRUE)
+
+ggplot(
+  decile_long,
+  aes(
+    x     = price_decile,
+    y     = `Sale Ratio`,
+    group = Stage,
+    color = Stage,
+    label = round(`Sale Ratio`, 2)
+  )
+) +
+  annotate("rect",
+    xmin = -Inf, xmax = Inf,
+    ymin = met_bounds(med_ratio_met)[["low"]],
+    ymax = met_bounds(med_ratio_met)[["high"]],
+    fill = pal$iaao_band, alpha = 0.12
+  ) +
+  geom_hline(yintercept = 1, color = "darkgreen", linewidth = 1) +
+  geom_hline(
+    yintercept = met_bounds(med_ratio_met)[["low"]],
+    linetype = "dotted", color = "black", linewidth = 0.8
+  ) +
+  geom_hline(
+    yintercept = met_bounds(med_ratio_met)[["high"]],
+    linetype = "dotted", color = "black", linewidth = 0.8
+  ) +
+  annotate("text",
+    x = 1, y = met_bounds(med_ratio_met)[["high"]] + 0.01,
+    label = sprintf(
+      "IAAO Range (%.2f–%.2f)",
+      met_bounds(med_ratio_met)[["low"]],
+      met_bounds(med_ratio_met)[["high"]]
+    ),
+    hjust = 0, vjust = -0.4, size = 3.5
+  ) +
+  geom_line(linewidth = 1) +
+  geom_label(show.legend = FALSE, size = 3) +
+  scale_color_manual(
+    values = c("Model" = pal$model, "Desk Review" = pal$desk_review)
+  ) +
+  scale_x_continuous(breaks = 1:10, labels = axis_labels) +
+  scale_y_continuous(
+    breaks = seq(floor(y_min * 10) / 10, ceiling(y_max * 10) / 10, by = 0.1)
+  ) +
+  coord_cartesian(ylim = c(y_min, y_max)) +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(size = 7.5)) +
+  labs(x = "Sale Price Decile", y = "Median Sale Ratio", color = "Stage")
+```
+
+```{r tbl-6}
+#| tbl-cap: 'Ratio Curve by Sale Price Decile'
+#| tbl-pos: H
+#| tbl-cap-location: top
+
+decile_display <- decile_stats %>%
+  select(
+    Decile        = price_decile,
+    `Price Range` = price_range,
+    `N Sales`     = number_of_sales,
+    `Model Ratio` = model_ratio,
+    `DR Ratio`    = desk_review_ratio
+  ) %>%
+  mutate(
+    `Model Ratio` = round(`Model Ratio`, 3),
+    `DR Ratio`    = round(`DR Ratio`, 3)
+  )
+
+kable(
+  decile_display,
+  format   = "latex",
+  escape   = FALSE,
+  booktabs = TRUE,
+  linesep  = "",
+  align    = c("c", "l", "r", "r", "r")
+)
+```
+
+```{r fig-7}
+#| fig-cap: >-
+#|   Neighborhood Median Assessment Ratios.\newline Green (0.90–1.10)
+#|   meets the IAAO standard; Blue indicates under-assessment; Red
+#|   indicates over-assessment.
+#| fig-pos: H
+#| fig-cap-location: top
+#| fig-height: 3.5
+#| fig-width: 8.5
+#| results: 'hide'
+
+neighborhoods <- ccao::nbhd_shp %>%
+  filter(township_name == town_name) %>%
+  select(town_nbhd, geometry)
+
+map_data <- neighborhoods %>%
+  left_join(nbhd_ratios, by = c("town_nbhd" = "neighborhood_number"))
+
+map_theme <- theme_void(base_size = 9) +
+  theme(
+    legend.position = "right",
+    plot.title      = element_text(face = "bold", size = 10)
+  )
+
+make_map <- function(col, title) {
+  ggplot() +
+    annotation_map_tile(type = "cartolight", zoomin = 0) +
+    geom_sf(
+      data = map_data, aes(fill = .data[[col]]), alpha = 0.85, linewidth = 0.1
+    ) +
+    ratio_fill_scale() +
+    map_theme +
+    labs(title = title)
+}
+
+map_model <- make_map("model_ratio", "Model")
+map_dr <- make_map("dr_ratio", "Desk Review")
+
+grid.newpage()
+print(map_model, vp = viewport(
+  x = 0, y = 0, width = 1 / 2, height = 1,
+  just = c("left", "bottom")
+))
+print(map_dr, vp = viewport(
+  x = 1 / 2, y = 0, width = 1 / 2, height = 1,
+  just = c("left", "bottom")
+))
+```
+
+
+```{r tbl-8}
+#| tbl-cap: >-
+#|   Neighborhood-Level Median Ratios.\newline Blue indicates
+#|   under-assessment; Green (0.90–1.1) indicates within standard;
+#|   Red indicates over-assessment.
+#| tbl-cap-location: top
+#| tbl-pos: H
+
+all_nbhds <- all_parcels %>%
+  distinct(neighborhood_number) %>%
+  arrange(neighborhood_number)
+
+nbhd_table_data <- all_nbhds %>%
+  left_join(nbhd_ratios, by = "neighborhood_number") %>%
+  mutate(
+    `NBHD` = neighborhood_number,
+    `Model Ratio` = ifelse(
+      is.na(model_ratio), "---", color_ratio_cell(model_ratio)
+    ),
+    `DR Ratio` = ifelse(
+      is.na(dr_ratio), "---", color_ratio_cell(dr_ratio)
+    ),
+    `N Sales` = as.character(ifelse(is.na(n_sales), 0L, n_sales))
+  ) %>%
+  select(`NBHD`, `Model Ratio`, `DR Ratio`, `N Sales`)
+
+# This allows us to separate the table in two halves,
+# ideally keeping it on one final page for larger
+# townships
+n <- nrow(nbhd_table_data)
+half <- ceiling(n / 2)
+pad <- half - (n - half)
+
+right_half <- bind_rows(
+  nbhd_table_data[(half + 1):n, ],
+  if (pad > 0) {
+    tibble(
+      NBHD = rep("", pad), `Model Ratio` = rep("", pad),
+      `DR Ratio` = rep("", pad), `N Sales` = rep("", pad)
+    )
+  }
+)
+
+spacer <- tibble(` ` = rep("", half))
+
+kable(
+  cbind(nbhd_table_data[1:half, ], spacer, right_half),
+  format = "latex",
+  escape = FALSE,
+  booktabs = FALSE,
+  linesep = "",
+  align = c("l", "r", "r", "r", "l", "l", "r", "r", "r"),
+  col.names = c(
+    "NBHD", "Model Ratio", "DR Ratio", "N Sales", "",
+    "NBHD", "Model Ratio", "DR Ratio", "N Sales"
+  )
+)
+```
