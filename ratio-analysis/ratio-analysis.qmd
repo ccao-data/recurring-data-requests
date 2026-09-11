@@ -89,29 +89,24 @@ all_parcels <- dr_vals %>%
 sales_df <- all_parcels %>%
   filter(!is.na(sale_price), !sale_excluded %in% TRUE)
 
-township_stats <- tibble(
-  model_ratio = median(sales_df$model_sale_ratio, na.rm = TRUE),
-  model_cod = assessr::cod(sales_df$model_sale_ratio),
-  model_prd = assessr::prd(sales_df$model_FMV, sales_df$sale_price),
-  model_prb = assessr::prb(sales_df$model_FMV, sales_df$sale_price),
-  model_mki = assessr::mki(sales_df$model_FMV, sales_df$sale_price),
-  desk_review_ratio = median(sales_df$desk_review_sale_ratio, na.rm = TRUE),
-  desk_review_cod = assessr::cod(sales_df$desk_review_sale_ratio),
-  desk_review_prd = assessr::prd(
-    sales_df$desk_review_FMV, sales_df$sale_price
-  ),
-  desk_review_prb = assessr::prb(
-    sales_df$desk_review_FMV, sales_df$sale_price
-  ),
-  desk_review_mki = assessr::mki(
-    sales_df$desk_review_FMV, sales_df$sale_price
-  ),
-  price_range = paste(
-    dollar(min(sales_df$sale_price)),
-    dollar(max(sales_df$sale_price)),
-    sep = "–"
+township_stats <- sales_df %>%
+  summarize(
+    model_ratio = median(model_sale_ratio, na.rm = TRUE),
+    model_cod = assessr::cod(model_sale_ratio),
+    model_prd = assessr::prd(model_FMV, sale_price),
+    model_prb = assessr::prb(model_FMV, sale_price),
+    model_mki = assessr::mki(model_FMV, sale_price),
+    desk_review_ratio = median(desk_review_sale_ratio, na.rm = TRUE),
+    desk_review_cod = assessr::cod(desk_review_sale_ratio),
+    desk_review_prd = assessr::prd(desk_review_FMV, sale_price),
+    desk_review_prb = assessr::prb(desk_review_FMV, sale_price),
+    desk_review_mki = assessr::mki(desk_review_FMV, sale_price),
+    price_range = paste(
+      dollar(min(sale_price)),
+      dollar(max(sale_price)),
+      sep = "–"
+    )
   )
-)
 
 decile_stats <- sales_df %>%
   summarize(
