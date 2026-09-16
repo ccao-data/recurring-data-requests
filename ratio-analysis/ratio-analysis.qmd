@@ -36,6 +36,9 @@ library(scales)
 library(sf)
 library(tidyr)
 
+# Prevent format() from switching round numbers (e.g. 400000) to
+# scientific notation (4e+05) in report tables.
+options(scipen = 999)
 
 input_file <- params$input_file
 file_base <- sub("\\.xlsx$", "", basename(input_file))
@@ -443,8 +446,10 @@ p_main + p_gap + plot_layout(widths = c(7, 3))
 ```{r desc-helpers}
 no_sale <- all_parcels %>% filter(is.na(sale_price))
 
-fmt_n <- function(x) format(x, big.mark = ",")
-fmt_dol <- function(x) paste0("\\$", format(round(x), big.mark = ","))
+fmt_n <- function(x) format(x, big.mark = ",", scientific = FALSE)
+fmt_dol <- function(x) {
+  paste0("\\$", format(round(x), big.mark = ",", scientific = FALSE))
+}
 fmt_pct <- function(changed, total) {
   paste0(round(changed / total * 100, 1), "\\%")
 }
