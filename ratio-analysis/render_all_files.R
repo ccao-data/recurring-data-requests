@@ -4,6 +4,10 @@
 # that isn't accessible from the server they need to be copied locally or run
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
+#
+# The analysis year is set via the ANALYSIS_YEAR variable in .Renviron so
+# that this script, ratio-analysis.qmd, and ratio-analysis.sql all stay in
+# sync. Update .Renviron and restart R to change the year.
 
 library(quarto)
 
@@ -26,8 +30,11 @@ library(tidyr)
 
 data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves"
 year <- Sys.getenv("ANALYSIS_YEAR")
-input_path <- file.path(data_path, "input", year)
-output_path <- file.path(data_path, "output", year)
+if (!nzchar(year)) {
+  stop("ANALYSIS_YEAR is not set. Add it to .Renviron and restart R.")
+}
+input_path <- file.path("input", year)
+output_path <- file.path("output", year)
 
 input_files <- list.files(input_path, pattern = "\\.xlsx$", full.names = TRUE)
 # This is a test to make sure that the township number is valid

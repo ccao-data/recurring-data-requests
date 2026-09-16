@@ -41,6 +41,9 @@ input_file <- params$input_file
 file_base <- sub("\\.xlsx$", "", basename(input_file))
 town_code <- substr(file_base, 1, 2)
 analysis_year <- Sys.getenv("ANALYSIS_YEAR")
+if (!nzchar(analysis_year)) {
+  stop("ANALYSIS_YEAR is not set.")
+}
 prior_year <- as.character(as.integer(analysis_year) - 1)
 
 town_name <- ccao::town_dict %>%
@@ -65,7 +68,8 @@ model_vals <- dbGetQuery(
     read_file("ratio-analysis.sql"),
     .con = conn
   )
-)
+) %>%
+  rename_with(tolower)
 
 dbDisconnect(conn)
 

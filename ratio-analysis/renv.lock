@@ -1027,7 +1027,7 @@
       "Package": "processx",
       "Version": "3.9.0",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/2026-07-10",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "R6",
@@ -1083,7 +1083,7 @@
       "Package": "ps",
       "Version": "1.9.3",
       "Source": "Repository",
-      "Repository": "https://packagemanager.posit.co/cran/__linux__/jammy/2026-07-10",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "utils"
