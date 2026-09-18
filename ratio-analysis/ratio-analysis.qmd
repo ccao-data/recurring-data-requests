@@ -496,7 +496,8 @@ mv_table <- tibble(
 ) %>%
   mutate(across(
     c(`Median DR FMV`, `Mean DR FMV`),
-    \(x) if_else(Group == "Excluded", "---", x)
+    # Desk review FMVs are absent for Excluded parcels
+    \(x) if_else(Group == "Excluded", "excluded", x)
   ))
 
 kable(
@@ -535,7 +536,12 @@ changes_table <- tibble(
     fmt_pct(n_changed(no_sale), nrow(no_sale)),
     fmt_pct(n_changed(all_parcels), nrow(all_parcels))
   )
-)
+) %>%
+  mutate(across(
+    c(`Desk Review Changes`, `\\% Changed`),
+    # Desk review FMVs are absent for Excluded parcels
+    \(x) if_else(Group == "Excluded", "excluded", x)
+  ))
 
 kable(
   changes_table,
