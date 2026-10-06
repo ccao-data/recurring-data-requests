@@ -34,5 +34,5 @@ results/*
 *.pdf
 *.rmarkdown
 *.db
-.vscode/settings.json
 */renv/library/*
+settings.json

@@ -19,28 +19,18 @@ noctua_options(unload = TRUE)
 AWS_ATHENA_CONN_NOCTUA <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
 
 # Triad we want to deliver condos for
-tri <- "South"
+tri <- "City"
 
 # Oldest year for which to include sales and permits
-min_year <- "2022"
+min_year <- "2024"
 
 # DATA ----
-
-# Gather previously identified problematic unit-level flags
-condo_qc <- read.xlsx(
-  file.path(path, "input/Flagged_Condos.xlsx"),
-  sheet = 1
-) %>%
-  mutate(pin = gsub("-", "", `14-Digit.PIN`)) %>%
-  select(c("PIN" = "pin", "QC Flag" = "Flag.Comments"))
 
 # Retrieve condos and their statuses
 condos <- dbGetQuery(
   conn = AWS_ATHENA_CONN_NOCTUA,
   glue(read_file("condos.sql"))
 ) %>%
-  # Only keep buildings that have a unit with a QC flag
-  filter(substr(pin, 1, 10) %in% substr(condo_qc$PIN, 1, 10)) %>%
   mutate(
     address = str_replace_all(address, "[^[:alnum:]]", " "),
     # Hyperlinks for google search and nearmap
@@ -72,11 +62,10 @@ condos <- dbGetQuery(
   # duplicate pins.
   distinct(pin, .keep_all = TRUE) %>%
   rename_with(~ str_to_title(gsub("_", " ", .x))) %>%
-  rename_with(~ str_replace_all(.x, c("Pin" = "PIN", "Sf" = "SF")))
+  rename_with(~ str_replace_all(.x, c("Pin" = "PIN", "Sf" = "SF", "Qc" = "QC")))
 
 # Formatting and output
 output <- condos %>%
-  left_join(condo_qc) %>%
   mutate(PIN = ccao::pin_format_pretty(PIN, full_length = TRUE)) %>%
   relocate("QC Flag") %>%
   relocate(c("Permits", "Sales"), .after = "Neighborhood Code") %>%
