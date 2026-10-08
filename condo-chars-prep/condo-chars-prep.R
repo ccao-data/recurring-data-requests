@@ -140,6 +140,52 @@ walk(wb$sheet_names, function(x) {
   setColWidths(wb, x, cols = seq_len(ncol(output[[x]])), widths = "auto")
 })
 
+directions <- tibble(
+  `QC Flag` = c(
+    "More than 2 Half Baths",
+    "More than 4 Full Baths",
+    "More than 4 Bedrooms",
+    "Unit SF not between 300 and 5,000",
+    "Unit SF exceeds building SF",
+    "Building SF not between 2,500 and 500,000",
+    "Combined Unit SF for all units in PIN10 exceeds Building SF",
+    "Multiple Building SF values for same PIN10",
+    "Building has no livable units",
+    "Year Built not between 1880 and 2026"
+  ),
+  Directions = c(
+    # nolint start: line_length_linter
+    "Check the number of half baths for the unit. If there are more than 2 half baths, please confirm that this is correct.",
+    "Check the number of full baths for the unit. If there are more than 4 full baths, please confirm that this is correct.",
+    "Check the number of bedrooms for the unit. If there are more than 4 bedrooms, please confirm that this is correct.",
+    "Check the square footage for the unit. If the unit has a square footage less than 300 or greater than 5,000, please confirm that this is correct.",
+    "Check the square footage for the unit and check the building square footage. Unit square footage should not exceed the building square footage.",
+    "Check the building square footage. If the building has a square footage less than 2,500 or greater than 500,000, please confirm that this is correct.",
+    "Check the combined square footage for all units in each PIN10. Combined unit SF should not exceed the building square footage.",
+    "Check for multiple building square footage values for the same PIN10. Buildings should only have one square footage value.",
+    "Check if the building has any livable units. If not, please confirm that this is correct.",
+    "Check the year built for the building."
+    # nolint end: line_length_linter
+  )
+)
+
+# Add directions as the first worksheet.
+addWorksheet(wb, "Directions")
+writeData(wb, "Directions", directions)
+worksheetOrder(wb) <- c(
+  length(wb$sheet_names), seq_len(length(wb$sheet_names) - 1)
+)
+setColWidths(wb, "Directions", cols = 1:2, widths = "auto")
+addStyle(
+  wb, "Directions", createStyle(wrapText = TRUE),
+  rows = 1:(nrow(directions) + 1), cols = 1:2, gridExpand = TRUE
+)
+addStyle(
+  wb, "Directions", createStyle(textDecoration = "bold"),
+  rows = 1, cols = 1:2, stack = TRUE
+)
+activeSheet(wb) <- length(sheets(wb))
+
 # Export
 saveWorkbook(
   wb,
