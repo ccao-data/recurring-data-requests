@@ -57,12 +57,15 @@ SELECT
             vpp.work_description,
             ']'
         )
-    END AS permits
+    END AS permits,
+    vpcr.flag_comments AS "QC Flag"
 FROM default.vw_pin_universe AS vpu
 -- Ensure only condos that have been reviewed in the past are up for re-review
 INNER JOIN ccao.pin_condo_char AS pcc
     ON vpu.pin = pcc.pin
-    AND vpu.year = pcc.year
+INNER JOIN qc.vw_pin_condo_review AS vpcr
+    ON vpu.pin = REPLACE(vpcr.pin, '-', '')
+    AND vpu.year = vpcr.year
 LEFT JOIN default.vw_pin_permit AS vpp
     ON vpu.pin = vpp.pin
     -- Limit permits to 2022 and after
@@ -75,7 +78,10 @@ LEFT JOIN default.vw_pin_sale AS vps2
     ON vpu.pin = vps2.pin
     -- Limit sales to 2022 and after
     AND vps2.year >= '{min_year}'
-    AND vps2.sv_is_outlier
+    AND vps2.is_outlier
 LEFT JOIN default.vw_pin_address AS vpa
     ON vpu.pin = vpa.pin AND vpu.year = vpa.year
 WHERE vpu.triad_name = '{tri}'
+    AND vpu.year = (
+        SELECT MAX(max_year.year) FROM default.vw_pin_universe AS max_year
+    )
