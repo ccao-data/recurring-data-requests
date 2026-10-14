@@ -26,12 +26,11 @@ SELECT
     CAST(NULL AS VARCHAR) AS new_full_baths,
     pcc.half_baths,
     CAST(NULL AS VARCHAR) AS new_half_baths,
+    vpcr.is_parking_space AS parking_space,
+    vpcr.parking_space_flag_reason,
+    CAST(NULL AS VARCHAR) AS new_parking_space,
     vpu.township_name AS township,
     vpu.nbhd_code AS neighborhood_code,
-    pcc.parking_pin,
-    vps1.is_parking_space,
-    vps1.parking_space_flag_reason,
-    vps1.is_common_area,
     -- Aggregate all sales docs, dates, and prices per pin
     CASE WHEN
             vps2.doc_no IS NOT NULL THEN
@@ -70,10 +69,6 @@ LEFT JOIN default.vw_pin_permit AS vpp
     ON vpu.pin = vpp.pin
     -- Limit permits to 2022 and after
     AND vpp.assessment_year >= '{min_year}'
-LEFT JOIN
-    default.vw_pin_status AS vps1
-    ON vpu.pin = vps1.pin
-    AND vpu.year = vps1.year
 LEFT JOIN default.vw_pin_sale AS vps2
     ON vpu.pin = vps2.pin
     -- Limit sales to 2022 and after
