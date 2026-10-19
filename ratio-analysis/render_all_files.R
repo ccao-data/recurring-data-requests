@@ -1,6 +1,6 @@
 # This file runs the ratio_analysis.qmd report for all files
 # stored in the  O drive in
-# O:/CCAODATA/recurring-data-requests/provisional-ratio-curves/. Since
+# O:/CCAODATA/recurring-data-requests/ratio_analysis/. Since
 # that isn't accessible from the server they need to be copied locally or run
 # from a local machine. They MUST be named according to the current naming
 # scheme, and there must be PIN and Desk Review Value columns
@@ -28,7 +28,7 @@ library(scales)
 library(sf)
 library(tidyr)
 
-data_path <- "O:/CCAODATA/recurring-data-requests/provisional-ratio-curves"
+data_path <- "O:/CCAODATA/recurring-data-requests/ratio_analysis"
 year <- Sys.getenv("ANALYSIS_YEAR")
 if (!nzchar(year)) {
   stop("ANALYSIS_YEAR is not set. Add it to .Renviron and restart R.")
