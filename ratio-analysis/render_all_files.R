@@ -33,7 +33,7 @@ year <- Sys.getenv("ANALYSIS_YEAR")
 if (!nzchar(year)) {
   stop("ANALYSIS_YEAR is not set. Add it to .Renviron and restart R.")
 }
-input_path <- file.path("input", year)
+input_path <- file.path(data_path, "input", year)
 output_path <- file.path("output", year)
 
 input_files <- list.files(input_path, pattern = "\\.xlsx$", full.names = TRUE)
