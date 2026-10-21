@@ -1,6 +1,19 @@
 -- Script to gather all North Tri condo parcels from ccao.pin_condo_chars and
 -- join on helpful columns for re-review by field. Worth noting this won't
 -- include any condos not already in ccao.pin_condo_chars for the North Tri.
+WITH pins AS (
+    SELECT
+        SUBSTR(parid, 1, 10) AS pin10,
+        taxyr AS year,
+        COUNT(*) AS pins
+    FROM iasworld.pardat
+    WHERE cur = 'Y'
+        AND deactivat IS NULL
+    GROUP BY
+        SUBSTR(parid, 1, 10),
+        taxyr
+)
+
 SELECT
     vpu.pin10,
     pcc.pin,
@@ -13,9 +26,7 @@ SELECT
         vpa.prop_address_zipcode_1
     ) AS address,
     vpa.prop_address_unit_number AS unit,
-    COUNT(*)
-        OVER (PARTITION BY vpu.pin10)
-        AS total_number_of_units_in_building,
+    pins.pins AS total_number_of_pins_in_building,
     pcc.building_sf,
     CAST(NULL AS VARCHAR) AS new_building_sf,
     pcc.unit_sf,
@@ -65,6 +76,9 @@ INNER JOIN ccao.pin_condo_char AS pcc
 INNER JOIN qc.vw_pin_condo_review AS vpcr
     ON vpu.pin = REPLACE(vpcr.pin, '-', '')
     AND vpu.year = vpcr.year
+LEFT JOIN pins
+    ON vpu.pin10 = pins.pin10
+    AND vpu.year = pins.year
 LEFT JOIN default.vw_pin_permit AS vpp
     ON vpu.pin = vpp.pin
     -- Limit permits to 2022 and after
