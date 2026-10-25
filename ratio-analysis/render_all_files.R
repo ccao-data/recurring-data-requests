@@ -34,7 +34,7 @@ if (!nzchar(year)) {
   stop("ANALYSIS_YEAR is not set. Add it to .Renviron and restart R.")
 }
 input_path <- file.path(data_path, "input", year)
-output_path <- file.path("output", year)
+output_path <- file.path(data_path, "output", year)
 
 input_files <- list.files(input_path, pattern = "\\.xlsx$", full.names = TRUE)
 # This is a test to make sure that the township number is valid
