@@ -1,6 +1,19 @@
 -- Script to gather all North Tri condo parcels from ccao.pin_condo_chars and
 -- join on helpful columns for re-review by field. Worth noting this won't
 -- include any condos not already in ccao.pin_condo_chars for the North Tri.
+WITH pins AS (
+    SELECT
+        SUBSTR(parid, 1, 10) AS pin10,
+        taxyr AS year,
+        COUNT(*) AS pins
+    FROM iasworld.pardat
+    WHERE cur = 'Y'
+        AND deactivat IS NULL
+    GROUP BY
+        SUBSTR(parid, 1, 10),
+        taxyr
+)
+
 SELECT
     vpu.pin10,
     pcc.pin,
@@ -13,9 +26,7 @@ SELECT
         vpa.prop_address_zipcode_1
     ) AS address,
     vpa.prop_address_unit_number AS unit,
-    COUNT(*)
-        OVER (PARTITION BY vpu.pin10)
-        AS total_number_of_units_in_building,
+    pins.pins AS total_number_of_pins_in_building,
     pcc.building_sf,
     CAST(NULL AS VARCHAR) AS new_building_sf,
     pcc.unit_sf,
@@ -26,12 +37,11 @@ SELECT
     CAST(NULL AS VARCHAR) AS new_full_baths,
     pcc.half_baths,
     CAST(NULL AS VARCHAR) AS new_half_baths,
+    vpcr.is_parking_space AS parking_space,
+    vpcr.parking_space_flag_reason,
+    CAST(NULL AS VARCHAR) AS new_parking_space,
     vpu.township_name AS township,
     vpu.nbhd_code AS neighborhood_code,
-    pcc.parking_pin,
-    vps1.is_parking_space,
-    vps1.parking_space_flag_reason,
-    vps1.is_common_area,
     -- Aggregate all sales docs, dates, and prices per pin
     CASE WHEN
             vps2.doc_no IS NOT NULL THEN
@@ -57,25 +67,30 @@ SELECT
             vpp.work_description,
             ']'
         )
-    END AS permits
+    END AS permits,
+    vpcr.flag_comments AS "QC Flag"
 FROM default.vw_pin_universe AS vpu
 -- Ensure only condos that have been reviewed in the past are up for re-review
 INNER JOIN ccao.pin_condo_char AS pcc
     ON vpu.pin = pcc.pin
-    AND vpu.year = pcc.year
+INNER JOIN qc.vw_pin_condo_review AS vpcr
+    ON vpu.pin = REPLACE(vpcr.pin, '-', '')
+    AND vpu.year = vpcr.year
+LEFT JOIN pins
+    ON vpu.pin10 = pins.pin10
+    AND vpu.year = pins.year
 LEFT JOIN default.vw_pin_permit AS vpp
     ON vpu.pin = vpp.pin
     -- Limit permits to 2022 and after
     AND vpp.assessment_year >= '{min_year}'
-LEFT JOIN
-    default.vw_pin_status AS vps1
-    ON vpu.pin = vps1.pin
-    AND vpu.year = vps1.year
 LEFT JOIN default.vw_pin_sale AS vps2
     ON vpu.pin = vps2.pin
     -- Limit sales to 2022 and after
     AND vps2.year >= '{min_year}'
-    AND vps2.sv_is_outlier
+    AND vps2.is_outlier
 LEFT JOIN default.vw_pin_address AS vpa
     ON vpu.pin = vpa.pin AND vpu.year = vpa.year
 WHERE vpu.triad_name = '{tri}'
+    AND vpu.year = (
+        SELECT MAX(max_year.year) FROM default.vw_pin_universe AS max_year
+    )

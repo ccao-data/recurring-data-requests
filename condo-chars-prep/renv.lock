@@ -4,7 +4,7 @@
     "Repositories": [
       {
         "Name": "CRAN",
-        "URL": "https://packagemanager.posit.co/cran/latest"
+        "URL": "https://cran.rstudio.com"
       }
     ]
   },
@@ -42,14 +42,15 @@
     },
     "Rcpp": {
       "Package": "Rcpp",
-      "Version": "1.0.14",
+      "Version": "1.1.2",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
+        "R",
         "methods",
         "utils"
       ],
-      "Hash": "e7bdd9ee90e96921ca8a0f1972d66682"
+      "Hash": "f481f89daa906a34eab8ef8658c8a89c"
     },
     "arrow": {
       "Package": "arrow",
@@ -102,12 +103,12 @@
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "assessr",
       "RemoteRef": "master",
-      "RemoteSha": "6ae99ac69b6857e58dbb811e6c8c814865a89e57",
+      "RemoteSha": "f1b2cdaa4fd5bc9d1597b9fe9537dc48d34e4a80",
       "Requirements": [
         "R",
         "stats"
       ],
-      "Hash": "1ddda9ec5a9ca63ec34b08e3a503a7bf"
+      "Hash": "e533ff8176cf00d0fec973ae645098a4"
     },
     "base64enc": {
       "Package": "base64enc",
@@ -146,23 +147,26 @@
     },
     "ccao": {
       "Package": "ccao",
-      "Version": "1.3.0",
+      "Version": "1.3.1",
       "Source": "GitHub",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
       "RemoteUsername": "ccao-data",
       "RemoteRepo": "ccao",
       "RemoteRef": "master",
-      "RemoteSha": "e97bab236d9cbf3035b3c06ec735d016a693cae2",
+      "RemoteSha": "419b67731a1aeb1fa1d2b47b0ed6c3391f5c653a",
       "Requirements": [
         "R",
+        "arrow",
         "assessr",
         "dplyr",
+        "glue",
         "magrittr",
+        "noctua",
         "rlang",
         "tidyr"
       ],
-      "Hash": "b448ae08402e086f4984e003a899dbcb"
+      "Hash": "f05c4f99a56189cac0a30f11cc05dbf3"
     },
     "cli": {
       "Package": "cli",
@@ -209,24 +213,24 @@
     },
     "curl": {
       "Package": "curl",
-      "Version": "6.2.2",
+      "Version": "7.1.0",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R"
       ],
-      "Hash": "e4f9e10b18f453a1b7eaf38247dad4fe"
+      "Hash": "2e004ed19964915a8faf48a574439be9"
     },
     "data.table": {
       "Package": "data.table",
-      "Version": "1.17.0",
+      "Version": "1.18.6.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R",
         "methods"
       ],
-      "Hash": "d06cd1a942bb17b607df7d57048d6840"
+      "Hash": "c0ce0fcc27807c5a19d135914fdc0359"
     },
     "digest": {
       "Package": "digest",
@@ -266,7 +270,7 @@
       "Package": "fansi",
       "Version": "1.0.6",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "grDevices",
@@ -321,7 +325,7 @@
       "Package": "httr2",
       "Version": "1.1.2",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "R6",
@@ -398,13 +402,8 @@
     "noctua": {
       "Package": "noctua",
       "Version": "2.6.3",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteUsername": "dyfanjones",
-      "RemoteRepo": "noctua",
-      "RemoteRef": "master",
-      "RemoteSha": "fdb0b87acf4dc3c59a61cadfd4a11d71b3a93615",
-      "RemoteHost": "api.github.com",
+      "Source": "Repository",
+      "Repository": "CRAN",
       "Requirements": [
         "DBI",
         "R",
@@ -415,17 +414,17 @@
         "utils",
         "uuid"
       ],
-      "Hash": "d308b77160876af3529dcc51c05d3eeb"
+      "Hash": "15471c0eaafcb7f2a4dabc983ea71112"
     },
     "openssl": {
       "Package": "openssl",
-      "Version": "2.3.2",
+      "Version": "2.4.2",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "askpass"
       ],
-      "Hash": "bc54d87ebf858b28de18df4bca6528d3"
+      "Hash": "6994d1c3ea954f29de6aeca5da95c99d"
     },
     "openxlsx": {
       "Package": "openxlsx",
@@ -450,7 +449,7 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws",
       "Requirements": [
         "paws.analytics",
@@ -468,33 +467,27 @@
         "paws.security.identity",
         "paws.storage"
       ],
-      "Hash": "8a5790094e45c845617b5154a936b697"
+      "Hash": "74c3c318005c08f6555761c88f35818a"
     },
     "paws.analytics": {
       "Package": "paws.analytics",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
-      "RemoteSubdir": "cran/paws.analytics",
+      "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "ec4fb624e5532758d12b6d31a986e4f0"
+      "Hash": "7d181b30d14ef34589ca20bbb7361fde"
     },
     "paws.application.integration": {
       "Package": "paws.application.integration",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
-      "RemoteSubdir": "cran/paws.application.integration",
+      "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "7422072f1f6305bc664ce093a42df33f"
+      "Hash": "6cde06aeae9f2a6f193886a7756afa7f"
     },
     "paws.common": {
       "Package": "paws.common",
@@ -521,12 +514,12 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.compute",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "341f85ff8b41a3d2007de645fb951265"
+      "Hash": "273e65c087456571d8a97299af04de44"
     },
     "paws.cost.management": {
       "Package": "paws.cost.management",
@@ -534,25 +527,22 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.cost.management",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "3aba6dc205a88e515a0e936f4f61623f"
+      "Hash": "df68cafeb7525f61b08bee899d9b96f3"
     },
     "paws.customer.engagement": {
       "Package": "paws.customer.engagement",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
-      "RemoteSubdir": "cran/paws.customer.engagement",
+      "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "8d877000907d11d5dd1c3f1aee099f05"
+      "Hash": "07280ba6a6878f004297a1e00ad7a26f"
     },
     "paws.database": {
       "Package": "paws.database",
@@ -560,38 +550,32 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.database",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "512d6ec56b4dae18f22668a00d160795"
+      "Hash": "698563ea9ecd1fb10710e5d239f481c1"
     },
     "paws.developer.tools": {
       "Package": "paws.developer.tools",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
-      "RemoteSubdir": "cran/paws.developer.tools",
+      "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "a08377a59c1c3adaf9cc91bc9e58da1e"
+      "Hash": "ec39a93b14e132a19dd50ff439f821de"
     },
     "paws.end.user.computing": {
       "Package": "paws.end.user.computing",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
-      "RemoteSubdir": "cran/paws.end.user.computing",
+      "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "fc4b8cdb829bbb2bc425adbdf3cb56b9"
+      "Hash": "92a5c132a8a378e98028fdaf0cd71a27"
     },
     "paws.machine.learning": {
       "Package": "paws.machine.learning",
@@ -599,12 +583,12 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.machine.learning",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "7b185b7ea384a52c7d92285262b21d65"
+      "Hash": "6519990011b7d90f14fb1385b1dd2d83"
     },
     "paws.management": {
       "Package": "paws.management",
@@ -612,12 +596,12 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.management",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "47c641d4d015d4be6915cec95751d853"
+      "Hash": "a850fed964b7e7035723cf6856f5f583"
     },
     "paws.networking": {
       "Package": "paws.networking",
@@ -625,25 +609,22 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.networking",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "4514343a0335691ba3ae5608cda4b808"
+      "Hash": "13e1482125281c7eae081dc178548a9a"
     },
     "paws.security.identity": {
       "Package": "paws.security.identity",
       "Version": "0.10.0",
       "Source": "Repository",
-      "Repository": "https://paws-r.r-universe.dev",
-      "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
-      "RemoteSubdir": "cran/paws.security.identity",
+      "Repository": "CRAN",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "9bc946c5c029ba2fb39dd54dcf6be30e"
+      "Hash": "0667aa70df94a5d303440420ca56c0f8"
     },
     "paws.storage": {
       "Package": "paws.storage",
@@ -651,18 +632,18 @@
       "Source": "Repository",
       "Repository": "https://paws-r.r-universe.dev",
       "RemoteUrl": "https://github.com/paws-r/paws",
-      "RemoteSha": "ba99337a65925ced77d6aa510ed09b9a041c9640",
+      "RemoteSha": "5bb03658855eb64b70a65209227b036364b2697f",
       "RemoteSubdir": "cran/paws.storage",
       "Requirements": [
         "paws.common"
       ],
-      "Hash": "75c6748035215e0bdcf71f552e513ed6"
+      "Hash": "1c67d49141d171758312df202aba0799"
     },
     "pillar": {
       "Package": "pillar",
-      "Version": "1.10.2",
+      "Version": "1.11.1",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Requirements": [
         "cli",
         "glue",
@@ -672,7 +653,7 @@
         "utils",
         "vctrs"
       ],
-      "Hash": "1098920a19b5cd5a15bacdc74a89979d"
+      "Hash": "1395e64f2689ffd503657778e810cee2"
     },
     "pkgconfig": {
       "Package": "pkgconfig",
@@ -758,24 +739,24 @@
     },
     "renv": {
       "Package": "renv",
-      "Version": "1.1.4",
+      "Version": "1.3.0",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/latest",
       "Requirements": [
         "utils"
       ],
-      "Hash": "dbe7cc815b478931d08fb48359811dec"
+      "Hash": "47c9e9df3aa6bd1c2f0be992b05279e2"
     },
     "rlang": {
       "Package": "rlang",
-      "Version": "1.1.6",
+      "Version": "1.3.0",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
         "R",
         "utils"
       ],
-      "Hash": "892124978869b74935dc3934c42bfe5a"
+      "Hash": "8d05afdb0b0dd5ef01b306db289fe21f"
     },
     "scales": {
       "Package": "scales",
@@ -813,7 +794,7 @@
       "Package": "stringr",
       "Version": "1.5.1",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "cli",
@@ -837,7 +818,7 @@
       "Package": "tibble",
       "Version": "3.2.1",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "fansi",
@@ -915,13 +896,13 @@
     },
     "utf8": {
       "Package": "utf8",
-      "Version": "1.2.5",
+      "Version": "1.2.6",
       "Source": "Repository",
-      "Repository": "CRAN",
+      "Repository": "RSPM",
       "Requirements": [
         "R"
       ],
-      "Hash": "ed553a57e9eb21f4d0298fbc1ad7b4df"
+      "Hash": "d526d558be176e9ceb68c3d1e83479b7"
     },
     "uuid": {
       "Package": "uuid",
@@ -961,7 +942,7 @@
       "Package": "vroom",
       "Version": "1.6.5",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "bit64",
@@ -997,16 +978,16 @@
     },
     "xml2": {
       "Package": "xml2",
-      "Version": "1.3.8",
+      "Version": "1.6.0",
       "Source": "Repository",
-      "Repository": "RSPM",
+      "Repository": "CRAN",
       "Requirements": [
         "R",
         "cli",
         "methods",
         "rlang"
       ],
-      "Hash": "f5130b2f3d461964bac93cc618013231"
+      "Hash": "568fe669c645b2007e4e8fcf5cde40e7"
     },
     "zip": {
       "Package": "zip",
