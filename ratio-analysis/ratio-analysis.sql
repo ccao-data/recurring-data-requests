@@ -8,7 +8,7 @@ WITH final_models AS (
         UNNEST(final_model.township_code_coverage) AS towns (township_code)
     -- Year will need to be adjusted so that desk review to model values join in
     -- R script is 1 to 1.
-    WHERE final_model.year = CAST(YEAR(CURRENT_DATE) AS VARCHAR)
+    WHERE final_model.year = {analysis_year} -- noqa
         AND final_model.type = 'res'
 ),
 
@@ -18,6 +18,7 @@ model_vals AS (
     SELECT
         assessment_pin.meta_pin AS pin,
         assessment_pin.pred_pin_final_fmv_round AS model_value,
+        -- Outlier sale prices are already removed in pipeline
         assessment_pin.sale_ratio_study_price AS sale_price,
         assessment_pin.sale_ratio_study_date AS sale_date,
         assessment_pin.sale_ratio_study_document_num AS sale_document_number
@@ -34,6 +35,7 @@ most_recent_pin AS (
     SELECT
         uni.pin,
         uni.township_name,
+        uni.class,
         uni.nbhd_code AS neighborhood_number,
         ROW_NUMBER() OVER (
             PARTITION BY
@@ -46,15 +48,13 @@ most_recent_pin AS (
     INNER JOIN ccao.class_dict
         ON uni.class = class_dict.class_code
         AND class_dict.modeling_group IN ('SF', 'MF', 'BB')
-    WHERE uni.year IN (
-            CAST(YEAR(CURRENT_DATE) - 1 AS VARCHAR),
-            CAST(YEAR(CURRENT_DATE) AS VARCHAR)
-        )
-        AND uni.township_code IN ({dr_towns*}) -- noqa
+    WHERE uni.year IN ({prior_year}, {analysis_year}) -- noqa
+        AND uni.township_code IN ({town_code}) -- noqa
 )
 
 SELECT
     vpu.pin,
+    vpu.class,
     vpu.township_name,
     vpu.neighborhood_number,
     model_vals.model_value,
