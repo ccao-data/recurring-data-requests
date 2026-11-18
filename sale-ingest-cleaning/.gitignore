@@ -1,0 +1,5 @@
+# Input/output files and metadat
+input/*.txt
+output/*.txt
+metadata/*.csv
+metadata/*.xlsx
