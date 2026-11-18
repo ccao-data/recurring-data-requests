@@ -58,7 +58,8 @@ sales <- list.files(
 # ias sales on document number (IDOR field 4) and PIN (IDOR field 14 for S
 # records, field 6 for A records). Matching on PIN rather than excluding whole
 # document numbers matters because an earlier upload may have been cut off
-# partway through a multi-PIN sale, so only some of its PINs may have made it in.
+# partway through a multi-PIN sale, so only some of its PINs may have made it
+# in.
 n_ias_excluded <- c(total = 0L, S = 0L, A = 0L)
 if (EXCLUDE_EXISTING_IAS_SALES) {
   conn <- dbConnect(noctua::athena(), rstudio_conn_tab = FALSE)
@@ -95,7 +96,10 @@ if (EXCLUDE_EXISTING_IAS_SALES) {
         str_split_i(all_data, fixed("|"), 6)
       ),
       key = paste(
-        str_remove(toupper(trimws(str_split_i(all_data, fixed("|"), 4))), "D+$"),
+        str_remove(
+          toupper(trimws(str_split_i(all_data, fixed("|"), 4))),
+          "D+$"
+        ),
         str_remove_all(pin, "[^0-9]")
       ),
       exclude = key %in% existing_doc_pins$key
@@ -279,12 +283,15 @@ a_unchanged <- identical(
   pre_truncation[substr(pre_truncation, 1, 1) == "A"],
   output$all_data[substr(output$all_data, 1, 1) == "A"]
 )
-cat("Check: All A records are unchanged -", ifelse(a_unchanged, "TRUE", "FALSE"))
+cat(
+  "Check: All A records are unchanged -",
+  ifelse(a_unchanged, "TRUE", "FALSE")
+)
 cat("\n\n")
 
 # Count per field of S records whose value changed during truncation
-# `before` must hold the same records as `after` (post-exclusion, pre-truncation)
-# so that the two lists align element by element
+# `before` must hold the same records as `after` (post-exclusion,
+# pre-truncation) so that the two lists align element by element
 before <- strsplit(
   pre_truncation[substr(pre_truncation, 1, 1) == "S"], "|",
   fixed = TRUE
@@ -347,7 +354,10 @@ cat("\n")
 print(as.data.frame(truncation_report), row.names = FALSE)
 
 # Write the summary and truncation counts (with caveats beside them) to sheets
-report_file <- file.path("output", glue("cleaned_sales_{Sys.Date()}_report.xlsx"))
+report_file <- file.path(
+  "output",
+  glue("cleaned_sales_{Sys.Date()}_report.xlsx")
+)
 notes <- tibble(
   note = c(
     paste(
